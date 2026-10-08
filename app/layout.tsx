@@ -20,8 +20,8 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "agent",
-  description: "A Next.js starter for eve agents with AI Elements.",
+  title: "NORTHLINE — Everyday clothing",
+  description: "Everyday clothing, made to last.",
 };
 
 // The page and Eve routes validate the generated app's Better Auth session.
