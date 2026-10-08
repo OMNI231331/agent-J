@@ -23,7 +23,7 @@ export default function StoryPage() {
       <section className="container-lsw grid gap-12 py-20 lg:grid-cols-[1fr_2fr]">
         <p className="eyebrow">Why LSW exists</p>
         <div className="max-w-2xl space-y-6 text-lg leading-relaxed text-silver">
-          <p>LSW is a premium streetwear label built around three words: faith, discipline, and purpose.</p>
+          <p>LSW is a streetwear label built around three words: faith, discipline, and purpose.</p>
           <p>We wanted clothing that looks like it belongs in the dark editorial world of modern streetwear — oversized, heavyweight, detailed — but that carries a message worth wearing. Not a slogan on every sleeve. A signal you notice up close.</p>
           <p>Every piece is meant to be a reminder: who you are, what you stand for, and what you&apos;re working toward.</p>
         </div>
