@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useCart } from "@/lib/cart";
+import { useModal } from "@/lib/use-modal";
 import { COLORS, money, type ColorId, type Product } from "@/lib/catalog";
 import { availabilityLabel, getVariant, MAX_PER_LINE, variantAvailability } from "@/lib/inventory";
 import { ProductArt } from "./product-art";
@@ -161,13 +162,15 @@ function Accordion({ title, children, open }: { title: string; children: React.R
 }
 
 function SizeGuide({ product, onClose }: { product: Product; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useModal(true, ref, onClose);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4" onKeyDown={(e) => e.key === "Escape" && onClose()}>
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <div aria-hidden className="absolute inset-0 bg-black/80" onClick={onClose} />
-      <div aria-labelledby="size-guide-title" aria-modal="true" className="relative w-full max-w-lg border border-line bg-coal p-6" role="dialog">
+      <div aria-labelledby="size-guide-title" aria-modal="true" className="relative w-full max-w-lg border border-line bg-coal p-6 outline-none" ref={ref} role="dialog" tabIndex={-1}>
         <div className="flex items-center justify-between">
           <h2 className="display text-2xl" id="size-guide-title">Size guide</h2>
-          <button autoFocus className="eyebrow hover:text-bone" onClick={onClose} type="button">Close</button>
+          <button className="eyebrow hover:text-bone" onClick={onClose} type="button">Close</button>
         </div>
         <p className="mt-3 border border-line p-3 text-sm text-steel"><strong className="text-bone">Draft.</strong> {product.sizeGuide.note}</p>
         <table className="mt-4 w-full text-left text-sm">

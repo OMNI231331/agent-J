@@ -14,7 +14,7 @@ export default function Home() {
       {/* HERO */}
       <section aria-labelledby="hero-title" className="relative isolate overflow-hidden border-b border-line">
         <div aria-hidden className="absolute inset-0 -z-10" style={{ backgroundImage: `${GRAIN}, radial-gradient(ellipse at 70% 40%, #2a2b2f 0%, #0a0a0b 65%)` }} />
-        <Monogram aria-hidden className="absolute -right-16 top-1/2 -z-10 h-[120%] -translate-y-1/2 opacity-[0.06] lg:right-[8%]" mono />
+        <Monogram aria-hidden className="absolute -right-24 top-1/2 -z-10 h-[120%] -translate-y-1/2 opacity-[0.04] lg:right-[-6%]" mono />
         <div className="container-lsw grid min-h-[calc(100dvh-6.5rem)] items-center gap-8 py-12 lg:grid-cols-[1.1fr_1fr]">
           <div>
             <Wordmark className="h-14 w-auto sm:h-20" label="LSW" />

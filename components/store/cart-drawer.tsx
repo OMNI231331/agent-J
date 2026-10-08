@@ -1,32 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { useModal } from "@/lib/use-modal";
 import { COLORS, money } from "@/lib/catalog";
 import { findSku, MAX_PER_LINE } from "@/lib/inventory";
 import { ProductArt } from "./product-art";
 
 export function CartDrawer() {
   const { open, setOpen, lines, subtotalCents, count, setQty, remove } = useCart();
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    const prev = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-      prev?.focus?.();
-    };
-  }, [open, setOpen]);
+  useModal(open, panelRef, () => setOpen(false));
 
   async function checkout() {
     setBusy(true);
@@ -50,10 +39,10 @@ export function CartDrawer() {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div aria-hidden className="absolute inset-0 bg-black/70" onClick={() => setOpen(false)} />
-      <aside aria-label="Shopping bag" aria-modal="true" className="relative flex h-dvh w-full max-w-md flex-col border-l border-line bg-coal" role="dialog">
+      <aside aria-label="Shopping bag" aria-modal="true" className="relative flex h-dvh w-full max-w-md flex-col border-l border-line bg-coal outline-none" ref={panelRef} role="dialog" tabIndex={-1}>
         <div className="flex h-16 items-center justify-between border-b border-line px-5">
           <h2 className="eyebrow !text-bone">Bag ({count})</h2>
-          <button aria-label="Close bag" className="-mr-2 grid h-11 w-11 place-items-center" onClick={() => setOpen(false)} ref={closeRef} type="button">
+          <button aria-label="Close bag" className="-mr-2 grid h-11 w-11 place-items-center" onClick={() => setOpen(false)} type="button">
             <X size={20} />
           </button>
         </div>

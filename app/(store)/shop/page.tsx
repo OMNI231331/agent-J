@@ -18,7 +18,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const href = (c: string, s: string) => `/shop?${new URLSearchParams({ ...(c !== "All" && { category: c }), ...(s !== "featured" && { sort: s }) })}`;
 
   return (
-    <div className="container-lsw py-12 sm:py-16">
+    <div className="container-lsw pt-12 pb-24 sm:pt-16">
       <p className="eyebrow">LSW — Drop 001</p>
       <h1 className="display mt-3 text-5xl sm:text-7xl">Shop</h1>
       <div className="mt-10 flex flex-col gap-5 border-y border-line py-4 sm:flex-row sm:items-center sm:justify-between">

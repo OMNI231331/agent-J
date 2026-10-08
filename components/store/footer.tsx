@@ -5,14 +5,14 @@ import { NewsletterForm } from "./newsletter-form";
 
 const cols = [
   { title: "Shop", links: [["All products", "/shop"], ["Drop 001", "/drop-001"], ["Hoodies", "/shop?category=Hoodies"], ["Tees", "/shop?category=Tees"]] },
-  { title: "LSW", links: [["Our story", "/our-story"], ["Contact", "/contact"], ["Brand system", "/brand"]] },
+  { title: "LSW", links: [["Our story", "/our-story"], ["Contact", "/contact"]] },
   { title: "Help", links: [["Shipping & returns", "/shipping-returns"], ["Privacy policy", "/privacy"], ["Terms", "/terms"]] },
 ] as const;
 
 export function Footer() {
   const socials = Object.entries(site.social).filter(([, url]) => url) as [string, string][];
   return (
-    <footer className="mt-24 border-t border-line bg-coal">
+    <footer className="border-t border-line bg-coal">
       <div className="container-lsw grid gap-12 py-16 lg:grid-cols-[1.2fr_2fr]">
         <div>
           <Wordmark className="h-8 w-auto" />

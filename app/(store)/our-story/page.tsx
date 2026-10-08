@@ -14,7 +14,7 @@ export default function StoryPage() {
   return (
     <>
       <section className="relative overflow-hidden border-b border-line">
-        <Monogram aria-hidden className="absolute -right-10 top-1/2 h-[130%] -translate-y-1/2 opacity-[0.05]" mono />
+        <Monogram aria-hidden className="absolute -right-24 top-1/2 hidden h-[130%] -translate-y-1/2 opacity-[0.04] lg:block" mono />
         <div className="container-lsw py-20 sm:py-32">
           <p className="eyebrow">Our story</p>
           <h1 className="display mt-4 max-w-4xl text-[clamp(2.6rem,8vw,6.5rem)]">More than clothing. It&apos;s a reminder.</h1>

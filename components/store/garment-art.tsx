@@ -139,8 +139,8 @@ export function GarmentArt({ garment, color, view, level, className }: Props) {
       {isHoodie && (
         <g fill="none" stroke={lines} strokeWidth="2">
           <rect x="76" y="418" width="248" height="24" fill={`url(#fab${uid})`} stroke={seam} />
-          <rect x="20" y="332" width="64" height="22" transform="rotate(-8 52 343)" />
-          <rect x="316" y="332" width="64" height="22" transform="rotate(8 348 343)" />
+          <path d="M16 338 L70 348 L67 376 L11 366 Z" fill={`url(#fab${uid})`} stroke={seam} />
+          <path d="M384 338 L330 348 L333 376 L389 366 Z" fill={`url(#fab${uid})`} stroke={seam} />
           {!back && <path d="M110 330 L134 262 H266 L290 330 Z" />}
           {!back && <path d="M186 100 V170 M214 100 V160" stroke="#c9ccd1" strokeOpacity=".5" />}
           {back && <path d="M200 96 V418" strokeDasharray="3 5" />}
@@ -156,7 +156,7 @@ export function GarmentArt({ garment, color, view, level, className }: Props) {
         </g>
       )}
       {garment === "hoodie" && back && <Cross cx={200} cy={265} size={210} stones />}
-      {garment === "hoodie" && !back && <Cross cx={68} cy={300} size={34} stones />}
+      {garment === "hoodie" && !back && <Cross cx={48} cy={262} size={46} stones />}
       {garment === "statement-hoodie" && back && <Cross cx={200} cy={260} size={250} stones />}
       {garment === "statement-hoodie" && !back && <MiniWord x={226} y={150} w={40} />}
       {garment === "tee" && !back && <MiniWord x={238} y={150} w={34} />}

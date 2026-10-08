@@ -35,7 +35,7 @@ export default async function ProductPage({ params }: Props) {
     }),
   };
   return (
-    <div className="container-lsw py-8 sm:py-12">
+    <div className="container-lsw pt-8 pb-24 sm:pt-12">
       <script dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} type="application/ld+json" />
       <ProductPurchase product={product} />
     </div>

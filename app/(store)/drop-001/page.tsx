@@ -12,11 +12,11 @@ export default function DropPage() {
   return (
     <>
       <section className="relative overflow-hidden border-b border-line">
-        <Monogram aria-hidden className="absolute -right-10 top-1/2 h-[140%] -translate-y-1/2 opacity-[0.05]" mono />
+        <Monogram aria-hidden className="absolute -right-24 top-1/2 hidden h-[130%] -translate-y-1/2 opacity-[0.04] lg:block" mono />
         <div className="container-lsw py-20 sm:py-32">
           <p className="eyebrow">LSW</p>
           <h1 className="display mt-4 text-[clamp(3.5rem,14vw,11rem)]">Drop 001</h1>
-          <p className="mt-6 max-w-xl text-lg text-silver">The first collection sets the standard: three focused pieces, one concept, produced in limited quantity — not stocked endlessly.</p>
+          <p className="mt-6 max-w-xl text-lg text-silver">The first collection sets the standard: three focused pieces plus one concept, produced in limited quantity — not stocked endlessly.</p>
           <p className="eyebrow mt-6 !text-bone">
             {site.launchDate ? `Opens ${new Date(site.launchDate).toLocaleDateString("en-US", { dateStyle: "long" })}` : "Release date to be announced — join the early-access list"}
           </p>
