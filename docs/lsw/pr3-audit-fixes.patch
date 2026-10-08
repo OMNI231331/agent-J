@@ -1,0 +1,1390 @@
+From c643c519009ca2f86336e588a0e5496826a7eb5d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 18:34:09 +0000
+Subject: [PATCH] PR #3 audit: complete order records, status ordering,
+ Redis-outage safety, reconcile/fulfil tools, tests, docs
+
+Findings fixed:
+- Orders lacked what fulfilment needs: now record shipping name/address, PaymentIntent id,
+  itemized snapshot, Stripe subtotal/total, and a fulfilment status (unfulfilled -> shipped|cancelled)
+- paid and payment_failed shared a rank, so a replayed 'failed' event could overwrite a paid
+  order: paid now outranks payment_failed
+- Checkout rate-limit and Redis calls sat outside the try block: a Redis outage became an
+  unhandled 500. Route logic moved to lib/commerce/http.ts, outages now return a safe 503
+- Live mode now requires a configured https NEXT_PUBLIC_SITE_URL for Stripe return links
+  instead of deriving them from the request Host header
+- Structured JSON webhook logs with no customer data
+- New: pnpm inventory fulfill / reconcile [--apply] (rebuilds paid Stripe sessions missing from Redis)
+- tests/ and scripts/ are now type-checked (they were excluded)
+- 49 new tests (95 total): tampered price/SKU/size/colour/qty, Redis outage, webhook failing
+  halfway then retried, route-level signature rejection, order completeness, status ordering,
+  fulfilment, reconcile. Mutation-checked: each fix's test fails when the fix is reverted
+- Smoke test extended to 15 steps incl. the real CLI against real Redis
+- docs/CHECKOUT.md: lifecycle, order data, new commands, launch blockers
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Y8zJk18ZqbEVcrEswW1MeA
+---
+ app/api/checkout/route.ts       |  34 +--
+ app/api/stripe/webhook/route.ts |  26 +-
+ docs/CHECKOUT.md                |  72 ++++-
+ lib/commerce/http.ts            |  87 ++++++
+ lib/commerce/reconcile.ts       |  73 +++++
+ lib/commerce/scripts.ts         |  22 +-
+ lib/commerce/store.ts           |  45 ++-
+ lib/commerce/stripe.ts          |  19 +-
+ lib/commerce/webhook.ts         |  61 +++-
+ package.json                    |   2 +-
+ scripts/inventory.ts            |  32 +-
+ scripts/smoke-test.ts           |  63 +++-
+ tests/hardening.test.ts         | 498 ++++++++++++++++++++++++++++++++
+ tsconfig.node.json              |   6 +
+ 14 files changed, 958 insertions(+), 82 deletions(-)
+ create mode 100644 lib/commerce/http.ts
+ create mode 100644 lib/commerce/reconcile.ts
+ create mode 100644 tests/hardening.test.ts
+ create mode 100644 tsconfig.node.json
+
+diff --git a/app/api/checkout/route.ts b/app/api/checkout/route.ts
+index 7afa100..2176a8f 100644
+--- a/app/api/checkout/route.ts
++++ b/app/api/checkout/route.ts
+@@ -1,6 +1,5 @@
+-import { NextResponse } from "next/server";
+-import { startCheckout } from "@/lib/commerce/checkout";
+ import { commerceConfig } from "@/lib/commerce/config";
++import { handleCheckoutRequest } from "@/lib/commerce/http";
+ import { site } from "@/lib/site";
+ 
+ export const runtime = "nodejs";
+@@ -8,27 +7,12 @@ export const dynamic = "force-dynamic";
+ 
+ /** Reserves stock atomically in Redis, then creates a Stripe Checkout Session. The client sends only SKU + qty (+ displayed price). */
+ export async function POST(req: Request) {
+-  const cfg = commerceConfig();
+-  if (!cfg.ok) return NextResponse.json({ error: cfg.error }, { status: 503 });
+-  // Stops scripts from reserving (hoarding) a limited drop: max 8 checkout starts per IP per 10 minutes.
+-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+-  if (!(await cfg.store.allow(`checkout:${ip}`, 8, 600)))
+-    return NextResponse.json({ error: "Too many checkout attempts. Please wait a few minutes and try again." }, { status: 429 });
+-  const body = (await req.json().catch(() => null)) as { lines?: unknown } | null;
+-  if (!body) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+-  try {
+-    const result = await startCheckout(body.lines, {
+-      store: cfg.store,
+-      stripe: cfg.stripe,
+-      origin: process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin,
+-      liveMode: site.mode === "live",
+-      shippingRateId: process.env.STRIPE_SHIPPING_RATE_ID || undefined,
+-      automaticTax: process.env.STRIPE_AUTOMATIC_TAX === "true",
+-    });
+-    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+-    return NextResponse.json({ url: result.url });
+-  } catch (e) {
+-    console.error("checkout: unexpected error", e instanceof Error ? e.message : e);
+-    return NextResponse.json({ error: "We couldn't start checkout. Please try again." }, { status: 500 });
+-  }
++  return handleCheckoutRequest(req, {
++    cfg: commerceConfig(),
++    liveMode: site.mode === "live",
++    siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
++    requestOrigin: new URL(req.url).origin,
++    shippingRateId: process.env.STRIPE_SHIPPING_RATE_ID || undefined,
++    automaticTax: process.env.STRIPE_AUTOMATIC_TAX === "true",
++  });
+ }
+diff --git a/app/api/stripe/webhook/route.ts b/app/api/stripe/webhook/route.ts
+index 26869c6..ee2f836 100644
+--- a/app/api/stripe/webhook/route.ts
++++ b/app/api/stripe/webhook/route.ts
+@@ -1,7 +1,5 @@
+-import { NextResponse } from "next/server";
+ import { getStore } from "@/lib/commerce/redis";
+-import { verifyStripeSignature } from "@/lib/commerce/stripe";
+-import { handleStripeEvent, type StripeEvent } from "@/lib/commerce/webhook";
++import { handleWebhookRequest } from "@/lib/commerce/http";
+ 
+ export const runtime = "nodejs";
+ export const dynamic = "force-dynamic";
+@@ -11,25 +9,5 @@ export const dynamic = "force-dynamic";
+  * 400 = bad signature (Stripe won't retry usefully); 500 = our infrastructure failed (Stripe retries).
+  */
+ export async function POST(req: Request) {
+-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+-  const store = getStore();
+-  if (!secret || !store) return NextResponse.json({ error: "not configured" }, { status: 503 });
+-
+-  const raw = await req.text();
+-  if (!verifyStripeSignature(raw, req.headers.get("stripe-signature"), secret)) {
+-    return NextResponse.json({ error: "invalid signature" }, { status: 400 });
+-  }
+-  let event: StripeEvent;
+-  try {
+-    event = JSON.parse(raw);
+-  } catch {
+-    return NextResponse.json({ error: "invalid payload" }, { status: 400 });
+-  }
+-  try {
+-    const result = await handleStripeEvent(event, store);
+-    return NextResponse.json({ received: true, ...result });
+-  } catch (e) {
+-    console.error("webhook: processing failed", event.id, event.type, e instanceof Error ? e.message : e);
+-    return NextResponse.json({ error: "processing failed" }, { status: 500 });
+-  }
++  return handleWebhookRequest(req, { secret: process.env.STRIPE_WEBHOOK_SECRET, store: getStore() });
+ }
+diff --git a/docs/CHECKOUT.md b/docs/CHECKOUT.md
+index f5ab387..0a1a137 100644
+--- a/docs/CHECKOUT.md
++++ b/docs/CHECKOUT.md
+@@ -9,6 +9,45 @@ How it works
+ - **Hoarding guard:** max 8 checkout starts per IP per 10 minutes (HTTP 429 after that), plus per-item limit of 3. It slows scripted hoarding; it doesn't stop a determined attacker with many IPs.
+ - **Late payment edge case:** if a payment lands after its hold was released and the stock was resold, the order is marked `needs_attention` (never oversold). You must refund or fulfil it by hand — run `pnpm inventory orders`.
+ 
++## Inventory and order lifecycle
++
++One reservation per checkout attempt. Every arrow below is a single atomic Redis script, so a retry or a duplicate delivery can never apply it twice.
++
++```
++                 start checkout (stock checked and taken, all lines or none)
++                                   |
++                               reserved ----- session expired / cancel / Stripe error / sweep -----> released (stock returned)
++                                   |                                                                    |
++              completed + paid     |   completed + unpaid (delayed method)                              | payment arrives later:
++                                   |            |                                                       |   stock still there -> committed (stock re-taken)
++                                   |       awaiting_payment -- async failed --> released                |   stock gone       -> committed_oversold (needs_attention)
++                                   |            | async succeeded
++                                   v            v
++                               committed  (stock stays deducted; this is a sale)
++```
++
++| Stripe event | What happens | Order record |
++|---|---|---|
++| `checkout.session.completed`, paid | reservation -> committed | `paid`, fulfilment `unfulfilled` |
++| `checkout.session.completed`, unpaid | reservation -> awaiting_payment (stock held, sweeper skips it) | `awaiting_payment` |
++| `checkout.session.async_payment_succeeded` | -> committed | `paid` |
++| `checkout.session.async_payment_failed` | stock returned | `payment_failed` |
++| `checkout.session.expired` | stock returned | none |
++| declined card inside Checkout | nothing: the customer can retry on the same session, the hold lasts until it expires | none |
++| paid, but the hold was released and the stock was resold | never oversold | `needs_attention`: **refund by hand** |
++
++Order status only moves forward: `awaiting_payment` < `payment_failed` < `paid` < `needs_attention`. A late or replayed "failed" event cannot overwrite a paid order. A webhook that fails halfway is not marked done, so Stripe's retry finishes it (commit and order-write are both safe to repeat).
++
++**What an order records** (`pnpm inventory orders`): internal reservation id, Stripe session id, PaymentIntent id (for refunds and reconciliation), items (SKU, name, color/size, quantity, catalog price when recorded), Stripe subtotal and total, currency, customer email and name, the shipping name and address, status, fulfilment status (`unfulfilled`, `shipped`, `cancelled`) with tracking, and timestamps. A note is added when Stripe's subtotal differs from the catalog (price changed mid-checkout). No card data is ever seen or stored.
++
++**Fulfilling and refunds:** `pnpm inventory fulfill <session_id> shipped [tracking]` or `cancelled`. Refunds are issued in the Stripe Dashboard (use the PaymentIntent id shown by `orders`); mark the order `cancelled` afterwards.
++
++**Reconciling with Stripe** (Stripe is the record of payments, Redis is the working copy): `pnpm inventory reconcile --days 7` lists completed Stripe sessions that have no order here, or whose status disagrees. `--apply` rebuilds them through the same idempotent webhook code (safe to repeat). Run it after any Redis or webhook outage, and weekly. Amount differences are reported and never auto-changed.
++
++**Logs:** the webhook writes one JSON line per event (`"app":"lsw"`, `evt`, `eventId`, `type`, `sessionId`, `reservationId`, `outcome`). No email, name, address or payment ids are logged. In Vercel: Project -> Logs -> search `webhook_failed` and `webhook_rejected`.
++
++**If Redis is down:** checkout answers 503 ("temporarily unavailable"), the shop shows availability as unconfirmed, and the webhook answers 500 so Stripe retries for days. Nothing is charged without a reservation. Run `reconcile` once Redis is back.
++
+ ## 1. Upstash Redis
+ 1. Create an account at https://console.upstash.com → **Create database** → name `lsw-inventory`, type *Regional*, a region close to your Vercel functions (US East if unsure), TLS on.
+ 2. Open the database → **REST API** section → copy **UPSTASH_REDIS_REST_URL** and **UPSTASH_REDIS_REST_TOKEN**.
+@@ -24,7 +63,7 @@ Vercel → your project → **Settings → Environment Variables**. Add each for
+ | `STRIPE_SECRET_KEY` | **`sk_test_…`** from Stripe test mode (Developers → API keys) |
+ | `STRIPE_WEBHOOK_SECRET` | `whsec_…` from step 3 |
+ | `CRON_SECRET` | a long random string (e.g. `openssl rand -hex 32`) |
+-| `NEXT_PUBLIC_SITE_URL` | your site URL, e.g. `https://yourdomain.com` |
++| `NEXT_PUBLIC_SITE_URL` | your site URL, e.g. `https://yourdomain.com`. **Live mode refuses to start a checkout unless this is an `https://` URL**; it never trusts the request's Host header for the return links |
+ | `NEXT_PUBLIC_STORE_MODE` | `preview` for now |
+ | `ALLOW_LIVE_PAYMENTS` | `false` |
+ | optional: `STRIPE_SHIPPING_RATE_ID`, `STRIPE_AUTOMATIC_TAX` | see `.env.example` |
+@@ -54,22 +93,41 @@ Use the **real production counts** for each SKU only after the garments exist. D
+ 2. Pay with card `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP.
+ 3. You land on **Order confirmed**. Then check:
+    - `pnpm inventory show` → that SKU is down by what you bought.
+-   - `pnpm inventory orders` → a `paid` order with the amount and email.
+-   - Stripe → Developers → Webhooks → the endpoint → all four recent deliveries show **200**.
++   - `pnpm inventory orders` → **exactly one** `paid` order with the amount, email, shipping address, payment id and `fulfilment unfulfilled`.
++   - Stripe → Developers → Webhooks → the endpoint → recent deliveries show **200**.
++   - `pnpm inventory reconcile --days 1` → "consistent: 1, missing: 0".
+ 4. Failure paths: card `4000 0000 0000 0002` (declined — stay on Stripe's page, stock stays held until it expires or you press back); press **← back** on Stripe's page → "Checkout cancelled" and stock returns; in Stripe's webhook page use **Resend** on a delivered event → still one order, stock unchanged.
+ 5. Oversell check: set a SKU to `1`, open checkout in two browsers, start checkout in both — the second gets "sold out".
++6. Replay: in Stripe's webhook page **Resend** the paid event twice → still one order, stock unchanged (`pnpm inventory orders`, `show`).
++7. Expiry: start a checkout and close the tab. After ~31 minutes Stripe sends `checkout.session.expired` and `show` returns the stock; or run `stripe checkout sessions expire <cs_...>` to try it immediately.
++8. Ship it: `pnpm inventory fulfill <session_id> shipped TRACKING123` → `orders` shows `shipped`.
+ 
+ ## 6. Automated tests
+ ```bash
+-pnpm typecheck
+-pnpm test        # needs redis-server installed locally; 46 tests on real Redis: stock limits, concurrent buyers, duplicate/racing webhooks, expired/failed payments, signatures, validation
+-pnpm build && pnpm smoke   # full purchase against the built app (real Upstash client + fake Stripe)
++pnpm typecheck   # the app, plus scripts/ and tests/
++pnpm test        # needs redis-server installed locally; 95 tests on real Redis (the production Lua scripts run for real, Stripe is faked):
++                 #   stock limits and concurrent buyers, duplicate/racing webhooks, expired/failed/delayed payments, signatures,
++                 #   cart validation (tampered price/SKU/size/colour/quantity), Redis outages, webhooks that fail halfway,
++                 #   order completeness, status ordering, fulfilment, Stripe reconciliation
++pnpm build && pnpm smoke   # 15 steps against the built app (real Upstash client + fake Stripe): purchase, replay, cancel, rate limit, cron,
++                           # plus the real inventory CLI: orders, fulfill, and reconcile (finds a paid session with no order and rebuilds it)
+ ```
+ CI (`.github/workflows/test.yml`) runs all of these on every pull request.
+ 
++## Launch blockers and known limitations (read before taking real money)
++1. **Not yet tested against real Stripe and real Upstash.** Steps 1-5 above are the proof.
++2. **Orders live in Redis.** That is a working copy, not a ledger or order-management system. Stripe holds the authoritative payment record. Export orders regularly (`pnpm inventory orders 500`), and move to a durable database (for example Postgres) before order volume grows. `reconcile` protects against lost orders, not against losing Redis history.
++3. **Shipping is free unless you set `STRIPE_SHIPPING_RATE_ID`.** Create a shipping rate in Stripe and set it, or every order ships at your cost. Sales tax is off unless `STRIPE_AUTOMATIC_TAX=true` and Stripe Tax is set up. Only US addresses are accepted.
++4. **No emails from this site.** Receipts come from Stripe (enable them). There is no "your order shipped" email.
++5. **`needs_attention` orders (paid but oversold) need a person to refund them.** Nothing watches for them yet: check `pnpm inventory orders` daily during a drop.
++6. **A delayed-payment session that never reports back** keeps its stock held (the sweeper deliberately skips `awaiting_payment`). Card-only checkout does not produce these; if you enable bank debits, run `reconcile` daily.
++7. Per-IP rate limiting uses `x-forwarded-for`, which Vercel sets; it is not a defence against many IPs.
++8. Preview mode shows the catalog's demo stock when Redis is not configured. Those counts are demo data, not inventory, and live mode never shows them.
++
+ ## What these tests do **not** cover
+ - Real Stripe and real Upstash over the internet (only test doubles/local Redis here) — **step 5 is the real proof; do it before anything else.**
+-- Real card networks, 3-D Secure flows, refunds, disputes, tax correctness, shipping rates.
++- Real card networks, 3-D Secure flows, disputes, tax correctness, shipping rates. (Late-payment refunds are manual; see launch blockers.)
++- A real browser purchase end to end on a deployed site.
+ - Email delivery of receipts. Order-management UI (orders are in Redis; read them with `pnpm inventory orders`).
+ - Vercel Cron on the Hobby plan runs at most daily; the webhook + pre-checkout sweep are the primary release paths.
+ 
+diff --git a/lib/commerce/http.ts b/lib/commerce/http.ts
+new file mode 100644
+index 0000000..d40167d
+--- /dev/null
++++ b/lib/commerce/http.ts
+@@ -0,0 +1,87 @@
++import { startCheckout } from "./checkout.ts";
++import type { CommerceConfig } from "./config.ts";
++import type { InventoryStore } from "./store.ts";
++import { verifyStripeSignature } from "./stripe.ts";
++import { handleStripeEvent, jsonLog, type Log, type StripeEvent } from "./webhook.ts";
++
++/** Route logic as plain functions (Request in, Response out) so it can be tested without a Next.js server. */
++
++export type CheckoutRequestDeps = {
++  cfg: CommerceConfig;
++  liveMode: boolean;
++  /** NEXT_PUBLIC_SITE_URL */
++  siteUrl?: string;
++  /** Origin of this request: only used outside live mode. */
++  requestOrigin: string;
++  shippingRateId?: string;
++  automaticTax?: boolean;
++  now?: () => number;
++  log?: Log;
++};
++
++const json = (body: unknown, status = 200) => Response.json(body, { status });
++
++/**
++ * Where Stripe sends the customer back to. In live mode this must be the configured https site URL, never a value
++ * derived from the incoming request (the Host header is not a trustworthy source for a redirect target).
++ */
++export function resolveOrigin(d: Pick<CheckoutRequestDeps, "siteUrl" | "requestOrigin" | "liveMode">): string | null {
++  const configured = d.siteUrl?.trim().replace(/\/+$/, "");
++  if (d.liveMode) return configured && /^https:\/\/[^/\s]+$/.test(configured) ? configured : null;
++  return configured || d.requestOrigin;
++}
++
++export async function handleCheckoutRequest(req: Request, d: CheckoutRequestDeps): Promise<Response> {
++  const log = d.log ?? jsonLog;
++  if (!d.cfg.ok) return json({ error: d.cfg.error }, 503);
++  const origin = resolveOrigin(d);
++  if (!origin) {
++    log({ evt: "checkout_unavailable", reason: "NEXT_PUBLIC_SITE_URL must be an https URL in live mode" });
++    return json({ error: "Checkout isn't open yet." }, 503);
++  }
++  try {
++    // Stops scripts from reserving (hoarding) a limited drop: max 8 checkout starts per IP per 10 minutes.
++    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
++    if (!(await d.cfg.store.allow(`checkout:${ip}`, 8, 600))) return json({ error: "Too many checkout attempts. Please wait a few minutes and try again." }, 429);
++    const body = (await req.json().catch(() => null)) as { lines?: unknown } | null;
++    if (!body) return json({ error: "Invalid request." }, 400);
++    const result = await startCheckout(body.lines, {
++      store: d.cfg.store,
++      stripe: d.cfg.stripe,
++      origin,
++      liveMode: d.liveMode,
++      shippingRateId: d.shippingRateId,
++      automaticTax: d.automaticTax,
++      now: d.now,
++    });
++    if (!result.ok) return json({ error: result.error }, result.status);
++    return json({ url: result.url });
++  } catch (e) {
++    // Redis or the network is down. Nothing was reserved that the sweeper won't return. Say so plainly; leak nothing.
++    log({ evt: "checkout_error", message: e instanceof Error ? e.message : String(e) });
++    return json({ error: "Checkout is temporarily unavailable. Nothing was charged. Please try again in a moment." }, 503);
++  }
++}
++
++export async function handleWebhookRequest(req: Request, d: { secret?: string; store: InventoryStore | null; now?: () => number; log?: Log }): Promise<Response> {
++  const log = d.log ?? jsonLog;
++  if (!d.secret || !d.store) return json({ error: "not configured" }, 503);
++  const raw = await req.text(); // the signature covers the exact raw bytes, so read the body as text before parsing
++  if (!verifyStripeSignature(raw, req.headers.get("stripe-signature"), d.secret)) {
++    log({ evt: "webhook_rejected", reason: "invalid_signature" });
++    return json({ error: "invalid signature" }, 400);
++  }
++  let event: StripeEvent;
++  try {
++    event = JSON.parse(raw);
++  } catch {
++    return json({ error: "invalid payload" }, 400);
++  }
++  try {
++    return json({ received: true, ...(await handleStripeEvent(event, d.store, d.now, log)) });
++  } catch (e) {
++    // 500 makes Stripe retry with backoff for days. The event was not marked processed, so the retry completes the work.
++    log({ evt: "webhook_failed", eventId: event.id, type: event.type, message: e instanceof Error ? e.message : String(e) });
++    return json({ error: "processing failed" }, 500);
++  }
++}
+diff --git a/lib/commerce/reconcile.ts b/lib/commerce/reconcile.ts
+new file mode 100644
+index 0000000..4fad058
+--- /dev/null
++++ b/lib/commerce/reconcile.ts
+@@ -0,0 +1,73 @@
++import type { InventoryStore } from "./store.ts";
++import { stripeBase, type CheckoutSession } from "./stripe.ts";
++import { handleStripeEvent, type Log } from "./webhook.ts";
++
++/** Completed Checkout Sessions Stripe has recorded since `sinceSec` (unix seconds). Read-only. */
++export async function listCompletedSessions(secretKey: string, sinceSec: number, fetchImpl: typeof fetch = fetch): Promise<CheckoutSession[]> {
++  const out: CheckoutSession[] = [];
++  let after: string | undefined;
++  for (let page = 0; page < 50; page++) {
++    const q = new URLSearchParams({ limit: "100", status: "complete", "created[gte]": String(sinceSec) });
++    if (after) q.set("starting_after", after);
++    const res = await fetchImpl(`${stripeBase(secretKey)}/checkout/sessions?${q}`, { headers: { Authorization: `Bearer ${secretKey}`, "Stripe-Version": "2024-06-20" } });
++    const data = (await res.json().catch(() => null)) as { data?: CheckoutSession[]; has_more?: boolean; error?: { message?: string } } | null;
++    if (!res.ok || !data?.data) throw new Error(data?.error?.message ?? `Stripe list failed (${res.status})`);
++    out.push(...data.data);
++    if (!data.has_more || !data.data.length) break;
++    after = data.data[data.data.length - 1].id;
++  }
++  return out;
++}
++
++export type ReconcileReport = {
++  checked: number;
++  ok: number;
++  /** Not one of ours (no reservation id): ignored. */
++  skipped: number;
++  /** Stripe has a completed session but Redis has no order for it. */
++  missing: string[];
++  mismatched: { sessionId: string; problem: string }[];
++  /** Fixed by replaying the session through the normal webhook handler (only with apply). */
++  repaired: string[];
++};
++
++const isPaid = (s: CheckoutSession) => s.payment_status === "paid" || s.payment_status === "no_payment_required";
++
++/**
++ * Compares Stripe (the record of payments) with the orders in Redis. With `apply`, a missing or behind-the-times order is
++ * rebuilt by replaying the session through handleStripeEvent, which is idempotent, so running this twice is harmless.
++ * Amount differences are reported, never auto-changed.
++ */
++export async function reconcile(store: InventoryStore, sessions: CheckoutSession[], opts: { apply: boolean; now?: () => number; log?: Log } = { apply: false }): Promise<ReconcileReport> {
++  const report: ReconcileReport = { checked: 0, ok: 0, skipped: 0, missing: [], mismatched: [], repaired: [] };
++  const now = opts.now ?? Date.now;
++  for (const s of sessions) {
++    if (!(s.metadata?.reservation_id ?? s.client_reference_id)) {
++      report.skipped++;
++      continue;
++    }
++    report.checked++;
++    const problem = async (): Promise<string | null> => {
++      const order = await store.getOrder(s.id);
++      if (!order) return "missing";
++      if (isPaid(s) && order.status !== "paid" && order.status !== "needs_attention") return `Stripe says paid but the order is ${order.status}`;
++      if (!isPaid(s) && order.status === "paid") return "Order is paid but Stripe says the payment is not complete";
++      if (s.amount_total != null && order.details.amountTotal != null && s.amount_total !== order.details.amountTotal)
++        return `amount differs: Stripe ${s.amount_total}, order ${order.details.amountTotal}`;
++      return null;
++    };
++    const first = await problem();
++    if (!first) {
++      report.ok++;
++      continue;
++    }
++    if (first === "missing") report.missing.push(s.id);
++    else report.mismatched.push({ sessionId: s.id, problem: first });
++    const repairable = first === "missing" || first.startsWith("Stripe says paid");
++    if (opts.apply && repairable) {
++      await handleStripeEvent({ id: `reconcile:${s.id}`, type: "checkout.session.completed", data: { object: s } }, store, now, opts.log);
++      if (!(await problem())) report.repaired.push(s.id);
++    }
++  }
++  return report;
++}
+diff --git a/lib/commerce/scripts.ts b/lib/commerce/scripts.ts
+index 3fd7013..2117e73 100644
+--- a/lib/commerce/scripts.ts
++++ b/lib/commerce/scripts.ts
+@@ -73,16 +73,36 @@ redis.call('ZREM', KEYS[2], ARGV[1])
+ return 'awaiting_payment'
+ `;
+ 
+-/** KEYS: order, orderIndex | ARGV: sessionId, status, rank, nowMs, details — never moves an order backwards. */
++/**
++ * KEYS: order, orderIndex | ARGV: sessionId, status, rank, nowMs, details, fulfilmentDefault
++ * Never moves an order backwards (a lower rank is ignored). fulfilmentDefault ("" for none) is only written once,
++ * so later events can never reset a shipped order to unfulfilled.
++ */
+ export const ORDER_UPSERT = `
+ local cur = tonumber(redis.call('HGET', KEYS[1], 'rank') or '0')
+ if tonumber(ARGV[3]) < cur then return 0 end
+ redis.call('HSET', KEYS[1], 'status', ARGV[2], 'rank', ARGV[3], 'details', ARGV[5], 'updatedAt', ARGV[4])
+ redis.call('HSETNX', KEYS[1], 'createdAt', ARGV[4])
++if ARGV[6] ~= '' then redis.call('HSETNX', KEYS[1], 'fulfillment', ARGV[6]) end
+ redis.call('ZADD', KEYS[2], 'NX', ARGV[4], ARGV[1])
+ return 1
+ `;
+ 
++/**
++ * KEYS: order | ARGV: target, nowMs, tracking
++ * unfulfilled -> shipped | cancelled. Only paid (or needs_attention) orders can be fulfilled. Repeating the same target is a no-op.
++ */
++export const SET_FULFILMENT = `
++local st = redis.call('HGET', KEYS[1], 'status')
++if st ~= 'paid' and st ~= 'needs_attention' then return 'not_fulfillable' end
++local cur = redis.call('HGET', KEYS[1], 'fulfillment') or 'unfulfilled'
++if cur == ARGV[1] then return 'unchanged' end
++if cur ~= 'unfulfilled' then return 'invalid_transition:' .. cur end
++redis.call('HSET', KEYS[1], 'fulfillment', ARGV[1], 'fulfillmentUpdatedAt', ARGV[2])
++if ARGV[3] ~= '' then redis.call('HSET', KEYS[1], 'tracking', ARGV[3]) end
++return 'ok'
++`;
++
+ export const HSET = `redis.call('HSET', KEYS[1], unpack(ARGV)) return 1`;
+ export const HGETALL = `return redis.call('HGETALL', KEYS[1])`;
+ export const MGET = `return redis.call('MGET', unpack(KEYS))`;
+diff --git a/lib/commerce/store.ts b/lib/commerce/store.ts
+index ade3047..d10e602 100644
+--- a/lib/commerce/store.ts
++++ b/lib/commerce/store.ts
+@@ -1,4 +1,5 @@
+ import * as S from "./scripts.ts";
++import type { StripeAddress } from "./stripe.ts";
+ 
+ /** The only Redis capability the commerce layer needs. Upstash in production, a local client in tests. */
+ export interface RedisLike {
+@@ -9,7 +10,20 @@ export type Line = { sku: string; qty: number };
+ export type ReservationStatus = "reserved" | "awaiting_payment" | "committed" | "committed_oversold" | "released";
+ export type Reservation = { id: string; status: ReservationStatus; lines: Line[]; expiresAt: number; sessionId?: string; reason?: string };
+ export type OrderStatus = "awaiting_payment" | "paid" | "payment_failed" | "needs_attention";
+-export type Order = { sessionId: string; status: OrderStatus; createdAt: number; updatedAt: number; details: OrderDetails };
++export type Fulfillment = "unfulfilled" | "shipped" | "cancelled";
++export type Order = {
++  sessionId: string;
++  status: OrderStatus;
++  createdAt: number;
++  updatedAt: number;
++  details: OrderDetails;
++  /** Only set on paid / needs_attention orders. */
++  fulfillment?: Fulfillment;
++  fulfillmentUpdatedAt?: number;
++  tracking?: string;
++};
++export type OrderItem = { sku: string; name: string; variant: string; qty: number; catalogUnitCents: number | null };
++/** Only what is needed to take payment and ship the order. Never card data. */
+ export type OrderDetails = {
+   reservationId: string;
+   lines: Line[];
+@@ -17,6 +31,13 @@ export type OrderDetails = {
+   currency: string | null;
+   email: string | null;
+   note?: string;
++  amountSubtotal?: number | null;
++  /** Stripe PaymentIntent id, for reconciling with Stripe and issuing refunds. */
++  paymentIntent?: string | null;
++  customerName?: string | null;
++  shipping?: { name: string | null; address: StripeAddress } | null;
++  /** Names and variants as sold, with the catalog price at the time the order was recorded. */
++  items?: OrderItem[];
+ };
+ 
+ const P = "lsw:";
+@@ -32,7 +53,8 @@ export const K = {
+ 
+ /** Terminal reservations and processed-event markers are kept 30 days for audit and duplicate detection. */
+ export const RETENTION_SEC = 60 * 60 * 24 * 30;
+-const ORDER_RANK: Record<OrderStatus, number> = { awaiting_payment: 1, paid: 2, payment_failed: 2, needs_attention: 3 };
++/** paid outranks payment_failed so a stray or replayed "failed" event can never overwrite a paid order. */
++export const ORDER_RANK: Record<OrderStatus, number> = { awaiting_payment: 1, payment_failed: 2, paid: 3, needs_attention: 4 };
+ 
+ /** Canonical encoding: merged, sorted by SKU, so the same cart always produces the same string. */
+ export function normalizeLines(lines: Line[]): Line[] {
+@@ -147,14 +169,29 @@ export class InventoryStore {
+ 
+   /** Returns false if the order already has a higher-precedence status (out-of-order or duplicate events). */
+   async upsertOrder(sessionId: string, status: OrderStatus, details: OrderDetails, now: number): Promise<boolean> {
+-    const r = await this.r.eval(S.ORDER_UPSERT, [K.order(sessionId), K.orderIndex], [sessionId, status, String(ORDER_RANK[status]), String(now), JSON.stringify(details)]);
++    const fulfilmentDefault = status === "paid" || status === "needs_attention" ? "unfulfilled" : "";
++    const r = await this.r.eval(S.ORDER_UPSERT, [K.order(sessionId), K.orderIndex], [sessionId, status, String(ORDER_RANK[status]), String(now), JSON.stringify(details), fulfilmentDefault]);
+     return Number(r) === 1;
+   }
+ 
++  /** Marks a paid order shipped or cancelled. Returns "ok", "unchanged", "not_fulfillable" or "invalid_transition:<current>". */
++  async setFulfilment(sessionId: string, target: "shipped" | "cancelled", now: number, tracking = ""): Promise<string> {
++    return String(await this.r.eval(S.SET_FULFILMENT, [K.order(sessionId)], [target, String(now), tracking]));
++  }
++
+   async getOrder(sessionId: string): Promise<Order | null> {
+     const h = pairsToObject(await this.r.eval(S.HGETALL, [K.order(sessionId)], []));
+     if (!h.status) return null;
+-    return { sessionId, status: h.status as OrderStatus, createdAt: Number(h.createdAt), updatedAt: Number(h.updatedAt), details: JSON.parse(h.details) };
++    return {
++      sessionId,
++      status: h.status as OrderStatus,
++      createdAt: Number(h.createdAt),
++      updatedAt: Number(h.updatedAt),
++      details: JSON.parse(h.details),
++      fulfillment: (h.fulfillment as Fulfillment | undefined) || undefined,
++      fulfillmentUpdatedAt: h.fulfillmentUpdatedAt ? Number(h.fulfillmentUpdatedAt) : undefined,
++      tracking: h.tracking || undefined,
++    };
+   }
+ 
+   async recentOrders(limit = 20): Promise<Order[]> {
+diff --git a/lib/commerce/stripe.ts b/lib/commerce/stripe.ts
+index 2b32a7e..3ae3448 100644
+--- a/lib/commerce/stripe.ts
++++ b/lib/commerce/stripe.ts
+@@ -29,6 +29,9 @@ export function signStripePayload(rawBody: string, secret: string, t = Math.floo
+   return `t=${t},v1=${createHmac("sha256", secret).update(`${t}.${rawBody}`, "utf8").digest("hex")}`;
+ }
+ 
++export type StripeAddress = { line1?: string | null; line2?: string | null; city?: string | null; state?: string | null; postal_code?: string | null; country?: string | null };
++export type StripeShipping = { name?: string | null; address?: StripeAddress | null };
++
+ export type CheckoutSession = {
+   id: string;
+   url?: string | null;
+@@ -38,7 +41,13 @@ export type CheckoutSession = {
+   currency?: string | null;
+   client_reference_id?: string | null;
+   metadata?: Record<string, string> | null;
+-  customer_details?: { email?: string | null } | null;
++  amount_subtotal?: number | null;
++  payment_intent?: string | { id?: string } | null;
++  customer_details?: { email?: string | null; name?: string | null } | null;
++  /** Current API versions put the shipping address here... */
++  collected_information?: { shipping_details?: StripeShipping | null } | null;
++  /** ...older API versions put it here. Both are read. */
++  shipping_details?: StripeShipping | null;
+ };
+ 
+ /** Minimal Stripe REST client (no SDK). Runs only on the server; the key never reaches the browser. */
+@@ -56,9 +65,13 @@ export class StripeError extends Error {
+   }
+ }
+ 
++/** Test hook: point at a local fake Stripe. Honoured ONLY for test-mode keys, so a live key can never be redirected. */
++export function stripeBase(secretKey: string): string {
++  return stripeMode(secretKey) === "test" && process.env.STRIPE_API_BASE ? process.env.STRIPE_API_BASE : "https://api.stripe.com/v1";
++}
++
+ export function stripeClient(secretKey: string, fetchImpl: typeof fetch = fetch): StripeApi {
+-  // Test hook: point at a local fake Stripe. Honoured ONLY for test-mode keys, so a live key can never be redirected.
+-  const base = stripeMode(secretKey) === "test" && process.env.STRIPE_API_BASE ? process.env.STRIPE_API_BASE : "https://api.stripe.com/v1";
++  const base = stripeBase(secretKey);
+   const call = async (method: "GET" | "POST", path: string, body?: URLSearchParams, idem?: string) => {
+     const headers: Record<string, string> = { Authorization: `Bearer ${secretKey}`, "Stripe-Version": "2024-06-20" };
+     if (body) headers["Content-Type"] = "application/x-www-form-urlencoded";
+diff --git a/lib/commerce/webhook.ts b/lib/commerce/webhook.ts
+index 0fcd0d5..a44d7e4 100644
+--- a/lib/commerce/webhook.ts
++++ b/lib/commerce/webhook.ts
+@@ -1,9 +1,14 @@
++import { findSku } from "../catalog.ts";
+ import type { CheckoutSession } from "./stripe.ts";
+-import type { InventoryStore, OrderStatus } from "./store.ts";
++import type { InventoryStore, OrderDetails, OrderItem, OrderStatus, Reservation } from "./store.ts";
+ 
+ export type StripeEvent = { id: string; type: string; data: { object: CheckoutSession } };
+ export type HandleResult = { handled: boolean; duplicate?: boolean; outcome?: string };
+ 
++/** One JSON object per line, so Vercel's log search can filter it. Callers must never put customer data in an entry. */
++export type Log = (entry: Record<string, unknown>) => void;
++export const jsonLog: Log = (entry) => console.log(JSON.stringify({ app: "lsw", at: new Date().toISOString(), ...entry }));
++
+ const HANDLED = new Set([
+   "checkout.session.completed",
+   "checkout.session.async_payment_succeeded",
+@@ -11,14 +16,53 @@ const HANDLED = new Set([
+   "checkout.session.expired",
+ ]);
+ 
++/** Builds the order record from the reservation (what we reserved) and the session (what Stripe says happened). */
++export function buildOrderDetails(resId: string, reservation: Reservation | null, session: CheckoutSession): OrderDetails {
++  const lines = reservation?.lines ?? [];
++  const items: OrderItem[] = lines.map((l) => {
++    const hit = findSku(l.sku);
++    return {
++      sku: l.sku,
++      name: hit?.product.name ?? l.sku,
++      variant: hit ? `${hit.variant.color.replace(/-/g, " ")} / ${hit.variant.size}` : "",
++      qty: l.qty,
++      catalogUnitCents: hit?.product.priceCents ?? null,
++    };
++  });
++  const ship = session.collected_information?.shipping_details ?? session.shipping_details ?? null;
++  const pi = session.payment_intent;
++  const details: OrderDetails = {
++    reservationId: resId,
++    lines,
++    items,
++    amountTotal: session.amount_total ?? null,
++    amountSubtotal: session.amount_subtotal ?? null,
++    currency: session.currency ?? null,
++    email: session.customer_details?.email ?? null,
++    customerName: session.customer_details?.name ?? null,
++    paymentIntent: typeof pi === "string" ? pi : (pi?.id ?? null),
++    shipping: ship ? { name: ship.name ?? null, address: ship.address ?? {} } : null,
++  };
++  // Defence in depth: the session was built from catalog prices, so a different subtotal means the price changed
++  // while the customer was checking out, or Stripe applied something we didn't ask for. Record it; never block a paid order.
++  const catalogSubtotal = items.every((i) => i.catalogUnitCents !== null) ? items.reduce((s, i) => s + i.qty * (i.catalogUnitCents ?? 0), 0) : null;
++  if (catalogSubtotal !== null && session.amount_subtotal != null && session.amount_subtotal !== catalogSubtotal)
++    details.note = `Stripe subtotal ${session.amount_subtotal} differs from the catalog subtotal ${catalogSubtotal} (price changed during checkout, or a discount was applied). Check before shipping.`;
++  return details;
++}
++
+ /**
+  * Idempotent: a duplicate delivery returns early; and even if two copies race, every state change
+  * underneath is guarded by the reservation/order status, so stock and orders change at most once.
+- * Throws on infrastructure errors so the route returns 500 and Stripe retries.
++ * Throws on infrastructure errors so the route returns 500 and Stripe retries; nothing is marked processed until the
++ * work is done, so a retry after a half-finished attempt completes it (commit and order upsert are both repeatable).
+  */
+-export async function handleStripeEvent(event: StripeEvent, store: InventoryStore, now: () => number = Date.now): Promise<HandleResult> {
++export async function handleStripeEvent(event: StripeEvent, store: InventoryStore, now: () => number = Date.now, log: Log = jsonLog): Promise<HandleResult> {
+   if (!HANDLED.has(event.type)) return { handled: false };
+-  if (await store.isEventProcessed(event.id)) return { handled: true, duplicate: true };
++  if (await store.isEventProcessed(event.id)) {
++    log({ evt: "webhook", eventId: event.id, type: event.type, duplicate: true });
++    return { handled: true, duplicate: true };
++  }
+ 
+   const session = event.data.object;
+   const resId = session.metadata?.reservation_id ?? session.client_reference_id ?? null;
+@@ -26,13 +70,7 @@ export async function handleStripeEvent(event: StripeEvent, store: InventoryStor
+ 
+   if (resId) {
+     const reservation = await store.getReservation(resId);
+-    const details = {
+-      reservationId: resId,
+-      lines: reservation?.lines ?? [],
+-      amountTotal: session.amount_total ?? null,
+-      currency: session.currency ?? null,
+-      email: session.customer_details?.email ?? null,
+-    };
++    const details = buildOrderDetails(resId, reservation, session);
+     const order = (status: OrderStatus, note?: string) => store.upsertOrder(session.id, status, note ? { ...details, note } : details, now());
+     const commitAndRecord = async () => {
+       const c = await store.commit(resId);
+@@ -62,5 +100,6 @@ export async function handleStripeEvent(event: StripeEvent, store: InventoryStor
+     }
+   }
+   await store.markEventProcessed(event.id);
++  log({ evt: "webhook", eventId: event.id, type: event.type, sessionId: session.id, reservationId: resId, outcome });
+   return { handled: true, outcome };
+ }
+diff --git a/package.json b/package.json
+index 5618798..d212804 100644
+--- a/package.json
++++ b/package.json
+@@ -12,7 +12,7 @@
+     "dev": "next dev",
+     "eval": "eve eval",
+     "start": "next start",
+-    "typecheck": "tsc --noEmit -p tsconfig.json",
++    "typecheck": "tsc --noEmit -p tsconfig.json && tsc -p tsconfig.node.json",
+     "build:eve": "eve build",
+     "dev:eve": "eve dev",
+     "start:eve": "eve start",
+diff --git a/scripts/inventory.ts b/scripts/inventory.ts
+index 079ed45..cc53d51 100644
+--- a/scripts/inventory.ts
++++ b/scripts/inventory.ts
+@@ -3,9 +3,13 @@
+ //   pnpm inventory add  <SKU> <+N|-N>    restock / correct relative to live stock (safe while customers are checking out)
+ //   pnpm inventory set  <SKU> <N>        absolute count (ONLY before launch or when no checkouts are open)
+ //   pnpm inventory orders [N]            most recent orders (paid / awaiting_payment / payment_failed / needs_attention)
++//   pnpm inventory fulfill <session_id> shipped|cancelled [tracking]   mark a paid order shipped or cancelled
++//   pnpm inventory reconcile [--days N] [--apply]   compare Stripe's completed sessions with the orders here; --apply rebuilds missing ones
+ //   pnpm inventory seed <N> --yes        set every purchasable SKU to N (first-time setup only; refuses if any SKU already has stock)
+ import { allSkus, findSku } from "../lib/catalog.ts";
+ import { getStore } from "../lib/commerce/redis.ts";
++import { listCompletedSessions, reconcile } from "../lib/commerce/reconcile.ts";
++import { stripeMode } from "../lib/commerce/stripe.ts";
+ 
+ const store = getStore();
+ if (!store) {
+@@ -29,8 +33,32 @@ if (cmd === "show") {
+   for (const o of orders) {
+     const items = o.details.lines.map((l) => `${l.qty}× ${l.sku}`).join(", ");
+     const total = o.details.amountTotal == null ? "?" : `$${(o.details.amountTotal / 100).toFixed(2)}`;
+-    console.log(`${new Date(o.createdAt).toISOString()}  ${o.status.padEnd(16)} ${total.padStart(9)}  ${o.details.email ?? "-"}  ${items}\n    ${o.sessionId}${o.details.note ? "\n    NOTE: " + o.details.note : ""}`);
++    const ship = o.details.shipping;
++    const addr = ship ? [ship.name, ship.address.line1, ship.address.line2, ship.address.city, ship.address.state, ship.address.postal_code, ship.address.country].filter(Boolean).join(", ") : "-";
++    console.log(
++      `${new Date(o.createdAt).toISOString()}  ${o.status.padEnd(16)} ${total.padStart(9)}  ${o.details.email ?? "-"}  ${items}\n` +
++        `    session ${o.sessionId}  payment ${o.details.paymentIntent ?? "-"}  fulfilment ${o.fulfillment ?? "-"}${o.tracking ? " (" + o.tracking + ")" : ""}\n` +
++        `    ship to: ${addr}${o.details.note ? "\n    NOTE: " + o.details.note : ""}`,
++    );
+   }
++} else if (cmd === "fulfill") {
++  if (!a || (b !== "shipped" && b !== "cancelled")) { console.error("Usage: pnpm inventory fulfill <session_id> shipped|cancelled [tracking]"); process.exit(1); }
++  const out = await store.setFulfilment(a, b, Date.now(), process.argv[5] ?? "");
++  console.log(out === "ok" ? `${a} marked ${b}` : out === "unchanged" ? `${a} is already ${b}` : `Refused: ${out}`);
++  if (out !== "ok" && out !== "unchanged") process.exit(1);
++} else if (cmd === "reconcile") {
++  const key = process.env.STRIPE_SECRET_KEY;
++  if (!key || stripeMode(key) === "invalid") { console.error("Set STRIPE_SECRET_KEY (test or live) to reconcile with Stripe."); process.exit(1); }
++  const days = process.argv.includes("--days") ? int(process.argv[process.argv.indexOf("--days") + 1]) : 7;
++  const apply = process.argv.includes("--apply");
++  const sessions = await listCompletedSessions(key, Math.floor(Date.now() / 1000) - days * 86400);
++  const r = await reconcile(store, sessions, { apply });
++  console.log(`Stripe completed sessions in the last ${days} day(s): ${sessions.length} (${r.skipped} not from this store)`);
++  console.log(`  consistent: ${r.ok}   missing in Redis: ${r.missing.length}   mismatched: ${r.mismatched.length}   repaired: ${r.repaired.length}`);
++  for (const id of r.missing) console.log(`  MISSING   ${id}`);
++  for (const m of r.mismatched) console.log(`  MISMATCH  ${m.sessionId}: ${m.problem}`);
++  if (!apply && (r.missing.length || r.mismatched.length)) console.log('  Re-run with --apply to rebuild missing/behind orders (safe to repeat). Amount differences are never auto-changed.');
++  if (r.missing.length + r.mismatched.length > r.repaired.length) process.exit(2);
+ } else if (cmd === "add") {
+   const n = await store.adjustStock(need(a), int(b));
+   console.log(n === null ? "Refused: that would take stock below zero." : `${a} is now ${n}`);
+@@ -48,7 +76,7 @@ if (cmd === "show") {
+   await store.setStock(Object.fromEntries(skus.map((s) => [s, n])));
+   console.log(`Seeded ${skus.length} SKUs with ${n} each.`);
+ } else {
+-  console.error("Commands: show | orders [N] | add <SKU> <+N|-N> | set <SKU> <N> | seed <N> --yes");
++  console.error("Commands: show | orders [N] | fulfill <session_id> shipped|cancelled [tracking] | reconcile [--days N] [--apply] | add <SKU> <+N|-N> | set <SKU> <N> | seed <N> --yes");
+   process.exit(1);
+ }
+ process.exit(0);
+diff --git a/scripts/smoke-test.ts b/scripts/smoke-test.ts
+index 37ad97f..19dbba1 100644
+--- a/scripts/smoke-test.ts
++++ b/scripts/smoke-test.ts
+@@ -2,7 +2,7 @@
+ // (via a local Upstash-protocol shim over redis-server) + a fake Stripe HTTP server.
+ // Run: pnpm build && node scripts/smoke-test.ts
+ import assert from "node:assert/strict";
+-import { spawn } from "node:child_process";
++import { execFile, spawn } from "node:child_process";
+ import { openSync } from "node:fs";
+ import http from "node:http";
+ import { createHmac } from "node:crypto";
+@@ -15,7 +15,7 @@ const WHSEC = "whsec_smoke", CRON = "cron_smoke", TOKEN = "tok_smoke", APP_PORT
+ const SKU = "LSW001-HOOD-WASHED-BLACK-M";
+ 
+ // ---- fake Stripe
+-const sessions = new Map<string, { id: string; status: string; params: URLSearchParams }>();
++const sessions = new Map<string, { id: string; status: string; params: URLSearchParams; object?: Record<string, unknown> }>();
+ const stripe = http.createServer((req, res) => {
+   let body = "";
+   req.on("data", (c) => (body += c));
+@@ -28,6 +28,10 @@ const stripe = http.createServer((req, res) => {
+       sessions.set(id, { id, status: "open", params: new URLSearchParams(body) });
+       return void res.end(JSON.stringify({ id, url: `https://checkout.stripe.test/${id}`, status: "open" }));
+     }
++    if (req.method === "GET" && url.pathname === "/v1/checkout/sessions") {
++      const done = [...sessions.values()].filter((s) => s.status === "complete").map((s) => s.object ?? { id: s.id, status: s.status });
++      return void res.end(JSON.stringify({ data: done, has_more: false }));
++    }
+     const m = url.pathname.match(/^\/v1\/checkout\/sessions\/([^/]+)(\/expire)?$/);
+     const s = m && sessions.get(m[1]);
+     if (!s) return void res.writeHead(404).end(JSON.stringify({ error: { message: "no such session" } }));
+@@ -91,7 +95,13 @@ try {
+     assert.equal((await webhook({ id: "evt_forged", type: "checkout.session.completed", data: { object: { id: sessionId, metadata: { reservation_id: resId }, payment_status: "paid" } } }, "whsec_wrong")).status, 400);
+     assert.equal((await store.getOrder(sessionId)), null);
+   });
+-  const paid = { id: "evt_paid_1", type: "checkout.session.completed", data: { object: { id: "", metadata: { reservation_id: "" }, payment_status: "paid", amount_total: 12500, currency: "usd", customer_details: { email: "buyer@example.com" } } } };
++  const SHIP = { name: "Smoke Buyer", address: { line1: "1 Smoke Street", city: "Austin", state: "TX", postal_code: "78701", country: "US" } };
++  const paid = { id: "evt_paid_1", type: "checkout.session.completed", data: { object: { id: "", status: "complete", metadata: { reservation_id: "" }, payment_status: "paid", amount_total: 12500, amount_subtotal: 12500, currency: "usd", payment_intent: "pi_smoke_1", customer_details: { email: "buyer@example.com", name: "Smoke Buyer" }, collected_information: { shipping_details: SHIP } } } };
++  // Async on purpose: this process hosts the fake Stripe and the Upstash shim the CLI calls, so it must not block while the CLI runs.
++  const cli = (...args: string[]) =>
++    new Promise<{ status: number; stdout: string; stderr: string }>((resolve) =>
++      execFile("node", ["scripts/inventory.ts", ...args], { encoding: "utf8", timeout: 30_000, env: { ...process.env, UPSTASH_REDIS_REST_URL: shim.url, UPSTASH_REDIS_REST_TOKEN: TOKEN, STRIPE_SECRET_KEY: "sk_test_smoke", STRIPE_API_BASE: `http://127.0.0.1:${stripePort}/v1` } }, (err, stdout, stderr) =>
++        resolve({ status: err ? (typeof err.code === "number" ? err.code : 1) : 0, stdout, stderr })));
+   await step("a signed 'paid' webhook creates the order and keeps the stock deducted", async () => {
+     paid.data.object.id = sessionId; paid.data.object.metadata.reservation_id = resId;
+     const r = await webhook(paid);
+@@ -106,6 +116,51 @@ try {
+     assert.equal(await stock(), 1);
+     assert.equal(Number(await admin.command("ZCARD", "lsw:orders")), 1);
+   });
++  await step("the order records the shipping address, payment id, items and an unfulfilled status", async () => {
++    const o = (await store.getOrder(sessionId))!;
++    assert.equal(o.fulfillment, "unfulfilled");
++    assert.equal(o.details.paymentIntent, "pi_smoke_1");
++    assert.equal(o.details.shipping?.address.city, "Austin");
++    assert.equal(o.details.items?.[0].sku, SKU);
++    assert.equal(o.details.amountSubtotal, 12500);
++    sessions.get(sessionId)!.status = "complete"; // Stripe now reports this session as complete
++    sessions.get(sessionId)!.object = paid.data.object;
++  });
++  await step("CLI: 'orders' shows the shipping address, payment id and fulfilment", async () => {
++    const r = await cli("orders");
++    assert.equal(r.status, 0, r.stderr);
++    assert.match(r.stdout, /pi_smoke_1/);
++    assert.match(r.stdout, /Austin/);
++    assert.match(r.stdout, /fulfilment unfulfilled/);
++  });
++  await step("CLI: 'reconcile' finds a paid Stripe session with no order, and --apply rebuilds it safely", async () => {
++    const id = "00000000-0000-4000-8000-0000000000bb";
++    await store.setStock({ [SKU]: 5 });
++    assert.deepEqual(await store.reserve(id, [{ sku: SKU, qty: 2 }], Date.now() + 3_600_000), { ok: true }); // customer paid, but our webhook never arrived
++    sessions.set("cs_lost_1", { id: "cs_lost_1", status: "complete", params: new URLSearchParams(), object: { id: "cs_lost_1", status: "complete", payment_status: "paid", metadata: { reservation_id: id }, amount_total: 25000, amount_subtotal: 25000, currency: "usd", payment_intent: "pi_lost_1", customer_details: { email: "lost@example.com" }, collected_information: { shipping_details: SHIP } } });
++    const dry = await cli("reconcile", "--days", "1");
++    assert.equal(dry.status, 2, "exit code 2 = needs attention");
++    assert.match(dry.stdout, /MISSING\s+cs_lost_1/);
++    assert.equal(await store.getOrder("cs_lost_1"), null, "a dry run changes nothing");
++    const fix = await cli("reconcile", "--days", "1", "--apply");
++    assert.equal(fix.status, 0, fix.stdout + fix.stderr);
++    assert.equal((await store.getOrder("cs_lost_1"))?.status, "paid");
++    assert.equal(await stock(), 3, "5 - 2 reserved, deducted once");
++    const again = await cli("reconcile", "--days", "1", "--apply");
++    assert.equal(again.status, 0);
++    assert.match(again.stdout, /missing in Redis: 0/);
++    assert.equal(await stock(), 3);
++    assert.equal(Number(await admin.command("ZCARD", "lsw:orders")), 2);
++    await store.setStock({ [SKU]: 1 });
++  });
++  await step("CLI: 'fulfill' marks a paid order shipped, and refuses an unpaid one", async () => {
++    const ok = await cli("fulfill", sessionId, "shipped", "TRACK123");
++    assert.equal(ok.status, 0, ok.stderr);
++    const o = (await store.getOrder(sessionId))!;
++    assert.equal(o.fulfillment, "shipped");
++    assert.equal(o.tracking, "TRACK123");
++    assert.equal((await cli("fulfill", "cs_does_not_exist", "shipped")).status, 1);
++  });
+   await step("success page shows the confirmed order", async () => {
+     const html = await (await fetch(`${B}/checkout/success?session_id=${sessionId}`)).text();
+     assert.match(html, /Order confirmed/);
+@@ -114,7 +169,7 @@ try {
+     const r = await post("/api/checkout", { lines: [{ sku: SKU, qty: 1 }] });
+     assert.equal(r.status, 200);
+     assert.equal(await stock(), 0);
+-    const sid = [...sessions.keys()][1];
++    const sid = [...sessions.keys()].filter((k) => k.startsWith("cs_test_")).pop()!; // the session this checkout just created
+     const rid = sessions.get(sid)!.params.get("metadata[reservation_id]")!;
+     const c = await post("/api/checkout/cancel", { reservationId: rid });
+     assert.equal(((await c.json()) as { outcome: string }).outcome, "released");
+diff --git a/tests/hardening.test.ts b/tests/hardening.test.ts
+new file mode 100644
+index 0000000..5590221
+--- /dev/null
++++ b/tests/hardening.test.ts
+@@ -0,0 +1,498 @@
++// Regression and gap-closing tests from the PR #3 audit: server-side validation, route behaviour, Redis outages,
++// half-finished webhooks, order completeness, status ordering and Stripe reconciliation.
++// Everything runs against a real redis-server (the production Lua scripts run for real); Stripe is faked.
++import assert from "node:assert/strict";
++import { after, before, beforeEach, describe, test } from "node:test";
++import { MAX_PER_LINE } from "../lib/catalog.ts";
++import type { CommerceConfig } from "../lib/commerce/config.ts";
++import { handleCheckoutRequest, handleWebhookRequest, resolveOrigin } from "../lib/commerce/http.ts";
++import { listCompletedSessions, reconcile } from "../lib/commerce/reconcile.ts";
++import * as S from "../lib/commerce/scripts.ts";
++import { InventoryStore, type RedisLike } from "../lib/commerce/store.ts";
++import { signStripePayload, type CheckoutSession, type StripeApi } from "../lib/commerce/stripe.ts";
++import { validateCart } from "../lib/commerce/validate.ts";
++import { handleStripeEvent, type StripeEvent } from "../lib/commerce/webhook.ts";
++import { RespClient, startRedis } from "./redis-harness.ts";
++
++const HOODIE = "LSW001-HOOD-WASHED-BLACK-M";
++const TEE = "LSW001-TEE-WASHED-BLACK-M";
++const CONCEPT = "LSW001-STMT-BLACK-M";
++const SECRET = "whsec_hardening";
++
++/** Wraps the real client so tests can simulate Redis being down, or failing at one specific step. */
++class FlakyRedis implements RedisLike {
++  down = false;
++  failOnce: string | null = null; // script text to fail the next time it runs
++  failAlways = new Set<string>(); // script texts that fail every time until removed
++  private readonly inner: RespClient;
++  constructor(inner: RespClient) {
++    this.inner = inner;
++  }
++  async eval(script: string, keys: string[], args: string[]) {
++    if (this.down) throw new Error("connect ECONNREFUSED 10.0.0.1:6379 (token=SECRET-TOKEN-VALUE)");
++    if (this.failAlways.has(script)) throw new Error("simulated Redis failure (persistent)");
++    if (this.failOnce === script) {
++      this.failOnce = null;
++      throw new Error("simulated Redis failure");
++    }
++    return this.inner.eval(script, keys, args);
++  }
++}
++
++let redis: Awaited<ReturnType<typeof startRedis>>;
++let client: RespClient;
++let flaky: FlakyRedis;
++let store: InventoryStore;
++
++before(async () => {
++  redis = await startRedis();
++  client = new RespClient(redis.port);
++  await client.ready();
++  flaky = new FlakyRedis(client);
++  store = new InventoryStore(flaky);
++});
++after(() => {
++  client.close();
++  redis.stop();
++});
++beforeEach(async () => {
++  flaky.down = false;
++  flaky.failOnce = null;
++  flaky.failAlways.clear();
++  await client.command("FLUSHALL");
++});
++
++const stock = async (sku: string) => (await store.getStock([sku]))[sku];
++let seq = 0;
++const uuid = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
++const logs: Record<string, unknown>[] = [];
++const log = (e: Record<string, unknown>) => void logs.push(e);
++
++function fakeStripe() {
++  const calls = { created: [] as URLSearchParams[], n: 0 };
++  const api: StripeApi = {
++    async createCheckoutSession(params) {
++      calls.created.push(params);
++      calls.n++;
++      return { id: `cs_test_${calls.n}`, url: `https://checkout.stripe.test/cs_test_${calls.n}` };
++    },
++    async retrieveCheckoutSession(id) {
++      return { id, status: "open" };
++    },
++    async expireCheckoutSession(id) {
++      return { id, status: "expired" };
++    },
++  };
++  return { api, calls };
++}
++const okCfg = (api: StripeApi): CommerceConfig => ({ ok: true, store, stripe: api, mode: "test" });
++const post = (body: unknown, headers: Record<string, string> = {}) =>
++  new Request("https://lsw.test/api/checkout", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) });
++
++const paidSession = (over: Partial<CheckoutSession> = {}): CheckoutSession => ({
++  id: "cs_test_paid",
++  status: "complete",
++  payment_status: "paid",
++  amount_total: 12500,
++  amount_subtotal: 12500,
++  currency: "usd",
++  payment_intent: "pi_test_123",
++  customer_details: { email: "buyer@example.com", name: "Test Buyer" },
++  collected_information: { shipping_details: { name: "Test Buyer", address: { line1: "1 Test Street", city: "Austin", state: "TX", postal_code: "78701", country: "US" } } },
++  ...over,
++});
++const ev = (type: string, session: CheckoutSession, id = `evt_${++seq}`): StripeEvent => ({ id, type, data: { object: session } });
++const signed = (e: StripeEvent, secret = SECRET) => {
++  const raw = JSON.stringify(e);
++  return { raw, headers: { "stripe-signature": signStripePayload(raw, secret) } };
++};
++const webhookReq = (raw: string, headers: Record<string, string>) => new Request("https://lsw.test/api/stripe/webhook", { method: "POST", headers, body: raw });
++const FUTURE = () => Date.now() + 3_600_000;
++
++// Reserve through the real store, then build the session Stripe would later report for it.
++async function reserved(sku = HOODIE, qty = 1, sessionId = "cs_test_paid") {
++  const id = uuid();
++  assert.deepEqual(await store.reserve(id, [{ sku, qty }], FUTURE()), { ok: true });
++  await store.attachSession(id, sessionId);
++  return { id, session: paidSession({ id: sessionId, metadata: { reservation_id: id }, client_reference_id: id }) };
++}
++
++// ---------------------------------------------------------------- 1. server-side validation
++describe("cart validation: nothing from the browser is trusted", () => {
++  const bad: [string, unknown, number][] = [
++    ["not an array", { sku: HOODIE, qty: 1 }, 400],
++    ["empty bag", [], 400],
++    ["more than 20 lines", Array.from({ length: 21 }, () => ({ sku: HOODIE, qty: 1 })), 400],
++    ["a null line", [null], 400],
++    ["a made-up product ID", [{ sku: "LSW999-FREE-HOODIE", qty: 1 }], 400],
++    ["a size that does not exist (SKU edited)", [{ sku: "LSW001-HOOD-WASHED-BLACK-XXXL", qty: 1 }], 400],
++    ["a colour that does not exist (SKU edited)", [{ sku: "LSW001-HOOD-PINK-M", qty: 1 }], 400],
++    ["quantity as a string", [{ sku: HOODIE, qty: "2" }], 400],
++    ["quantity 0", [{ sku: HOODIE, qty: 0 }], 400],
++    ["negative quantity", [{ sku: HOODIE, qty: -1 }], 400],
++    ["fractional quantity", [{ sku: HOODIE, qty: 1.5 }], 400],
++    ["infinite quantity", [{ sku: HOODIE, qty: Infinity }], 400],
++    ["quantity over the per-item limit", [{ sku: HOODIE, qty: MAX_PER_LINE + 1 }], 409],
++    ["per-item limit exceeded by merging duplicate lines", [{ sku: HOODIE, qty: MAX_PER_LINE }, { sku: HOODIE, qty: 1 }], 409],
++    ["a concept product that is not for sale", [{ sku: CONCEPT, qty: 1 }], 409],
++    ["a tampered price", [{ sku: HOODIE, qty: 1, priceCents: 100 }], 409],
++    ["a colour that does not match the SKU", [{ sku: HOODIE, qty: 1, color: "charcoal" }], 400],
++    ["a size that does not match the SKU", [{ sku: HOODIE, qty: 1, size: "XL" }], 400],
++  ];
++  for (const [name, input, status] of bad)
++    test(`rejects ${name}`, () => {
++      const r = validateCart(input, { liveMode: false });
++      assert.equal(r.ok, false);
++      if (!r.ok) assert.equal(r.status, status);
++    });
++
++  test("accepts displayed values that match the catalog", () => {
++    assert.equal(validateCart([{ sku: HOODIE, qty: 1, priceCents: 12500, color: "washed-black", size: "M" }], { liveMode: false }).ok, true);
++  });
++
++  test("a rejected cart reserves nothing and never reaches Stripe", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const s = fakeStripe();
++    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1, priceCents: 1 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
++    assert.equal(res.status, 409);
++    assert.equal(s.calls.n, 0);
++    assert.equal(await stock(HOODIE), 5);
++  });
++});
++
++// ---------------------------------------------------------------- 2. checkout route behaviour
++describe("checkout route", () => {
++  beforeEach(async () => void (await store.setStock({ [HOODIE]: 100 })));
++
++  test("not configured answers 503 with the setup message and touches nothing", async () => {
++    const res = await handleCheckoutRequest(post({ lines: [] }), { cfg: { ok: false, error: "Checkout isn't connected yet." }, liveMode: false, requestOrigin: "https://lsw.test", log });
++    assert.equal(res.status, 503);
++  });
++
++  test("a malformed body is a 400, not a crash", async () => {
++    const res = await handleCheckoutRequest(post("{not json"), { cfg: okCfg(fakeStripe().api), liveMode: false, requestOrigin: "https://lsw.test", log });
++    assert.equal(res.status, 400);
++  });
++
++  test("valid cart: stock is reserved and the customer gets a Stripe URL", async () => {
++    const s = fakeStripe();
++    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
++    assert.equal(res.status, 200);
++    assert.match(((await res.json()) as { url: string }).url, /^https:\/\/checkout\.stripe\.test\//);
++    assert.equal(await stock(HOODIE), 98);
++  });
++
++  test("9th checkout start from one IP in the window is rate-limited; another IP is unaffected", async () => {
++    const s = fakeStripe();
++    const d = { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log };
++    const codes: number[] = [];
++    for (let i = 0; i < 9; i++) codes.push((await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }, { "x-forwarded-for": "203.0.113.5" }), d)).status);
++    assert.deepEqual(codes, [200, 200, 200, 200, 200, 200, 200, 200, 429]);
++    assert.equal((await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }, { "x-forwarded-for": "203.0.113.6" }), d)).status, 200);
++  });
++
++  test("Redis connection failure: a safe 503, no stack, no credentials, nothing charged", async () => {
++    flaky.down = true;
++    logs.length = 0;
++    const s = fakeStripe();
++    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
++    const text = await res.text();
++    assert.equal(res.status, 503);
++    assert.match(text, /temporarily unavailable/);
++    assert.doesNotMatch(text, /ECONNREFUSED|SECRET-TOKEN|at .*\.ts/);
++    assert.equal(s.calls.n, 0, "Stripe must not be called when stock can't be reserved");
++  });
++
++  test("Redis failing right after Stripe creates the session: a clean error and the stock is returned immediately", async () => {
++    const s = fakeStripe();
++    flaky.failOnce = S.HSET; // attaching the session id to the reservation fails
++    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
++    assert.equal(res.status, 502);
++    assert.doesNotMatch(await res.text(), /simulated Redis failure/);
++    assert.equal(await stock(HOODIE), 100, "the customer never received a checkout URL, so the hold is released straight away");
++  });
++
++  test("if Redis also fails to release, the stock is held only until the hold expires, then the sweeper returns it", async () => {
++    const s = fakeStripe();
++    flaky.failAlways.add(S.HSET).add(S.RELEASE);
++    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
++    assert.equal(res.status, 502);
++    assert.equal(await stock(HOODIE), 98, "still held: release could not run");
++    flaky.failAlways.clear();
++    assert.equal(await store.sweepExpired(Date.now() + 2 * 60 * 60 * 1000), 1);
++    assert.equal(await stock(HOODIE), 100, "abandoned hold is returned, nothing leaks permanently");
++  });
++
++  test("redirect origin: live mode requires the configured https URL and ignores the request's origin", () => {
++    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "https://lsw.example/", requestOrigin: "https://evil.example" }), "https://lsw.example");
++    assert.equal(resolveOrigin({ liveMode: true, siteUrl: undefined, requestOrigin: "https://lsw.example" }), null);
++    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "http://lsw.example", requestOrigin: "https://lsw.example" }), null);
++    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "https://lsw.example/path", requestOrigin: "x" }), null);
++    assert.equal(resolveOrigin({ liveMode: false, siteUrl: undefined, requestOrigin: "http://localhost:3000" }), "http://localhost:3000");
++    assert.equal(resolveOrigin({ liveMode: false, siteUrl: "https://preview.lsw.example", requestOrigin: "http://localhost:3000" }), "https://preview.lsw.example");
++  });
++
++  test("live mode without an https site URL refuses to start checkout", async () => {
++    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(fakeStripe().api), liveMode: true, requestOrigin: "https://lsw.test", log });
++    assert.equal(res.status, 503);
++  });
++
++  test("Stripe return URLs use the configured site URL", async () => {
++    const s = fakeStripe();
++    await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(s.api), liveMode: false, siteUrl: "https://preview.lsw.example", requestOrigin: "https://evil.example", log });
++    const p = s.calls.created[0];
++    assert.ok(p.get("success_url")!.startsWith("https://preview.lsw.example/checkout/success"));
++    assert.ok(p.get("cancel_url")!.startsWith("https://preview.lsw.example/checkout/cancelled"));
++  });
++});
++
++// ---------------------------------------------------------------- 3. webhook route behaviour
++describe("webhook route", () => {
++  test("not configured: 503 so Stripe retries later", async () => {
++    const e = signed(ev("checkout.session.completed", paidSession()));
++    assert.equal((await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: undefined, store, log })).status, 503);
++    assert.equal((await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: SECRET, store: null, log })).status, 503);
++  });
++
++  test("a missing, forged or tampered signature is a 400 and changes nothing", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { id, session } = await reserved();
++    const e = signed(ev("checkout.session.completed", session));
++    logs.length = 0;
++    assert.equal((await handleWebhookRequest(webhookReq(e.raw, {}), { secret: SECRET, store, log })).status, 400);
++    const forged = signed(ev("checkout.session.completed", session), "whsec_attacker");
++    assert.equal((await handleWebhookRequest(webhookReq(forged.raw, forged.headers), { secret: SECRET, store, log })).status, 400);
++    assert.equal((await handleWebhookRequest(webhookReq(e.raw.replace("cs_test_paid", "cs_test_evil"), e.headers), { secret: SECRET, store, log })).status, 400);
++    assert.equal(await store.getOrder("cs_test_paid"), null);
++    assert.equal((await store.getReservation(id))?.status, "reserved");
++    assert.ok(logs.some((l) => l.evt === "webhook_rejected"));
++    assert.doesNotMatch(JSON.stringify(logs), /buyer@example\.com|cs_test_evil/);
++  });
++
++  test("a validly signed but malformed payload is a 400", async () => {
++    const raw = "this is not json";
++    const res = await handleWebhookRequest(webhookReq(raw, { "stripe-signature": signStripePayload(raw, SECRET) }), { secret: SECRET, store, log });
++    assert.equal(res.status, 400);
++  });
++
++  test("paid event over the route creates the order; replaying it is acknowledged and changes nothing", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { id, session } = await reserved();
++    assert.equal(await stock(HOODIE), 4);
++    const e = signed(ev("checkout.session.completed", session, "evt_route_paid"));
++    const first = await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: SECRET, store, log });
++    assert.equal(first.status, 200);
++    assert.equal((await store.getOrder("cs_test_paid"))?.status, "paid");
++    const again = await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: SECRET, store, log });
++    assert.equal(((await again.json()) as { duplicate?: boolean }).duplicate, true);
++    assert.equal(await stock(HOODIE), 4);
++    assert.equal((await store.getReservation(id))?.status, "committed");
++    assert.equal((await store.recentOrders()).length, 1);
++  });
++
++  test("Redis down while processing: 500 so Stripe retries, and nothing is half-recorded as done", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    const e = signed(ev("checkout.session.completed", session, "evt_down"));
++    flaky.down = true;
++    const res = await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: SECRET, store, log });
++    assert.equal(res.status, 500);
++    assert.doesNotMatch(await res.text(), /ECONNREFUSED|SECRET-TOKEN/);
++    flaky.down = false;
++    assert.equal(await store.isEventProcessed("evt_down"), false);
++  });
++
++  test("a webhook that fails halfway is finished by Stripe's retry: one order, one stock deduction", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { id, session } = await reserved(HOODIE, 2);
++    const e = signed(ev("checkout.session.completed", session, "evt_half"));
++    // The commit succeeds, then recording the order fails.
++    flaky.failOnce = S.ORDER_UPSERT;
++    assert.equal((await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: SECRET, store, log })).status, 500);
++    assert.equal((await store.getReservation(id))?.status, "committed", "stock was already finalized");
++    assert.equal(await store.getOrder("cs_test_paid"), null, "but the order wasn't written yet");
++    assert.equal(await store.isEventProcessed("evt_half"), false, "so the event is not marked done");
++    // Stripe retries the same event.
++    assert.equal((await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: SECRET, store, log })).status, 200);
++    assert.equal((await store.getOrder("cs_test_paid"))?.status, "paid");
++    assert.equal(await stock(HOODIE), 3, "deducted once, not twice");
++    assert.equal((await store.recentOrders()).length, 1);
++    // And a third delivery is a no-op.
++    assert.equal(((await (await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: SECRET, store, log })).json()) as { duplicate?: boolean }).duplicate, true);
++  });
++
++  test("logs are structured and carry no customer data", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    logs.length = 0;
++    const e = signed(ev("checkout.session.completed", session));
++    await handleWebhookRequest(webhookReq(e.raw, e.headers), { secret: SECRET, store, log });
++    assert.ok(logs.some((l) => l.evt === "webhook" && l.outcome === "committed"));
++    assert.doesNotMatch(JSON.stringify(logs), /buyer@example\.com|Test Buyer|1 Test Street|78701|pi_test_123/);
++  });
++});
++
++// ---------------------------------------------------------------- 4. order records
++describe("paid orders contain what fulfilment needs", () => {
++  test("shipping address, payment reference, items, amounts and an unfulfilled status are recorded", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { id, session } = await reserved(HOODIE, 2);
++    await handleStripeEvent(ev("checkout.session.completed", { ...session, amount_total: 25000, amount_subtotal: 25000 }), store, Date.now, log);
++    const o = (await store.getOrder("cs_test_paid"))!;
++    assert.equal(o.status, "paid");
++    assert.equal(o.fulfillment, "unfulfilled");
++    assert.equal(o.details.reservationId, id);
++    assert.equal(o.details.paymentIntent, "pi_test_123");
++    assert.equal(o.details.email, "buyer@example.com");
++    assert.equal(o.details.customerName, "Test Buyer");
++    assert.equal(o.details.amountTotal, 25000);
++    assert.equal(o.details.currency, "usd");
++    assert.deepEqual(o.details.shipping?.address, { line1: "1 Test Street", city: "Austin", state: "TX", postal_code: "78701", country: "US" });
++    assert.deepEqual(o.details.items, [{ sku: HOODIE, name: "Signature Heavyweight Hoodie", variant: "washed black / M", qty: 2, catalogUnitCents: 12500 }]);
++    assert.equal(o.details.note, undefined);
++    assert.ok(o.createdAt > 0 && o.updatedAt > 0);
++  });
++
++  test("older API versions (shipping_details) and an expanded payment_intent object are both understood", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    const legacy: CheckoutSession = { ...session, collected_information: undefined, shipping_details: { name: "Old Style", address: { city: "Dallas", country: "US" } }, payment_intent: { id: "pi_expanded" } };
++    await handleStripeEvent(ev("checkout.session.completed", legacy), store, Date.now, log);
++    const o = (await store.getOrder("cs_test_paid"))!;
++    assert.equal(o.details.shipping?.name, "Old Style");
++    assert.equal(o.details.paymentIntent, "pi_expanded");
++  });
++
++  test("a subtotal that differs from the catalog is flagged for a human, never silently accepted or blocked", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    await handleStripeEvent(ev("checkout.session.completed", { ...session, amount_subtotal: 9999 }), store, Date.now, log);
++    const o = (await store.getOrder("cs_test_paid"))!;
++    assert.equal(o.status, "paid");
++    assert.match(o.details.note ?? "", /differs from the catalog/);
++  });
++
++  test("an unpaid (delayed-method) session is not marked paid and cannot be fulfilled", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    await handleStripeEvent(ev("checkout.session.completed", { ...session, payment_status: "unpaid" }), store, Date.now, log);
++    const o = (await store.getOrder("cs_test_paid"))!;
++    assert.equal(o.status, "awaiting_payment");
++    assert.equal(o.fulfillment, undefined);
++    assert.equal(await store.setFulfilment("cs_test_paid", "shipped", Date.now()), "not_fulfillable");
++  });
++
++  test("fulfilment moves unfulfilled -> shipped | cancelled once, and later events never reset it", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    await handleStripeEvent(ev("checkout.session.completed", session), store, Date.now, log);
++    assert.equal(await store.setFulfilment("cs_test_paid", "shipped", 1000, "1Z999"), "ok");
++    assert.equal(await store.setFulfilment("cs_test_paid", "shipped", 2000), "unchanged");
++    assert.equal(await store.setFulfilment("cs_test_paid", "cancelled", 3000), "invalid_transition:shipped");
++    // A replay of the paid event (different event id) must not reset a shipped order.
++    await handleStripeEvent(ev("checkout.session.async_payment_succeeded", session), store, Date.now, log);
++    const o = (await store.getOrder("cs_test_paid"))!;
++    assert.equal(o.fulfillment, "shipped");
++    assert.equal(o.tracking, "1Z999");
++    assert.equal(o.fulfillmentUpdatedAt, 1000);
++  });
++});
++
++// ---------------------------------------------------------------- 5. status ordering
++describe("order status only moves forward", () => {
++  test("a failed-payment event arriving after payment cannot overwrite a paid order", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { id, session } = await reserved();
++    await handleStripeEvent(ev("checkout.session.completed", session), store, Date.now, log);
++    await handleStripeEvent(ev("checkout.session.async_payment_failed", session), store, Date.now, log);
++    assert.equal((await store.getOrder("cs_test_paid"))?.status, "paid");
++    assert.equal((await store.getReservation(id))?.status, "committed");
++    assert.equal(await stock(HOODIE), 4);
++  });
++
++  test("a payment that succeeds after an earlier failure record upgrades the order to paid", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    await handleStripeEvent(ev("checkout.session.async_payment_failed", session), store, Date.now, log);
++    assert.equal((await store.getOrder("cs_test_paid"))?.status, "payment_failed");
++    assert.equal(await stock(HOODIE), 5);
++    await handleStripeEvent(ev("checkout.session.async_payment_succeeded", session), store, Date.now, log);
++    assert.equal((await store.getOrder("cs_test_paid"))?.status, "paid");
++    assert.equal(await stock(HOODIE), 4, "stock re-taken for the paid order, not oversold");
++  });
++
++  test("an oversold order stays flagged even if the paid event is delivered again", async () => {
++    await store.setStock({ [HOODIE]: 1 });
++    const a = await reserved(HOODIE, 1, "cs_test_late");
++    await store.release(a.id, "expired_sweep");
++    const b = uuid();
++    assert.deepEqual(await store.reserve(b, [{ sku: HOODIE, qty: 1 }], FUTURE()), { ok: true }); // someone else buys the last one
++    await handleStripeEvent(ev("checkout.session.completed", a.session), store, Date.now, log);
++    await handleStripeEvent(ev("checkout.session.async_payment_succeeded", a.session), store, Date.now, log);
++    assert.equal((await store.getOrder("cs_test_late"))?.status, "needs_attention");
++    assert.equal(await stock(HOODIE), 0);
++  });
++});
++
++// ---------------------------------------------------------------- 6. reconciliation with Stripe
++describe("reconciliation with Stripe", () => {
++  test("a paid session whose webhook never arrived is found, then rebuilt safely (twice is harmless)", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { id, session } = await reserved(HOODIE, 2);
++    const dry = await reconcile(store, [session], { apply: false, log });
++    assert.deepEqual(dry.missing, ["cs_test_paid"]);
++    assert.equal(await store.getOrder("cs_test_paid"), null, "a dry run changes nothing");
++    const fixed = await reconcile(store, [session], { apply: true, log });
++    assert.deepEqual(fixed.repaired, ["cs_test_paid"]);
++    assert.equal((await store.getOrder("cs_test_paid"))?.status, "paid");
++    assert.equal((await store.getReservation(id))?.status, "committed");
++    assert.equal(await stock(HOODIE), 3);
++    const again = await reconcile(store, [session], { apply: true, log });
++    assert.equal(again.ok, 1);
++    assert.equal(again.missing.length + again.mismatched.length, 0);
++    assert.equal(await stock(HOODIE), 3);
++    assert.equal((await store.recentOrders()).length, 1);
++  });
++
++  test("Stripe says paid but Redis says payment_failed: reported and repaired", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    await handleStripeEvent(ev("checkout.session.async_payment_failed", session), store, Date.now, log);
++    const r = await reconcile(store, [session], { apply: true, log });
++    assert.equal(r.mismatched.length, 1);
++    assert.deepEqual(r.repaired, ["cs_test_paid"]);
++    assert.equal((await store.getOrder("cs_test_paid"))?.status, "paid");
++  });
++
++  test("an amount difference is reported but never auto-changed; sessions from elsewhere are skipped", async () => {
++    await store.setStock({ [HOODIE]: 5 });
++    const { session } = await reserved();
++    await handleStripeEvent(ev("checkout.session.completed", session), store, Date.now, log);
++    const r = await reconcile(store, [{ ...session, amount_total: 99999 }, { id: "cs_other", status: "complete", payment_status: "paid" }], { apply: true, log });
++    assert.equal(r.skipped, 1);
++    assert.equal(r.mismatched.length, 1);
++    assert.match(r.mismatched[0].problem, /amount differs/);
++    assert.equal(r.repaired.length, 0);
++    assert.equal((await store.getOrder("cs_test_paid"))?.details.amountTotal, 12500);
++  });
++
++  test("listing Stripe sessions pages through results and never echoes the key on errors", async () => {
++    const seen: string[] = [];
++    const pages = [
++      { data: [{ id: "cs_1" }, { id: "cs_2" }], has_more: true },
++      { data: [{ id: "cs_3" }], has_more: false },
++    ];
++    const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
++      seen.push(String(url));
++      assert.equal((init?.headers as Record<string, string>).Authorization, "Bearer sk_test_abc");
++      return Response.json(pages.shift()!);
++    }) as typeof fetch;
++    const out = await listCompletedSessions("sk_test_abc", 1000, fakeFetch);
++    assert.deepEqual(out.map((s) => s.id), ["cs_1", "cs_2", "cs_3"]);
++    assert.match(seen[0], /status=complete/);
++    assert.match(seen[0], /created%5Bgte%5D=1000/);
++    assert.match(seen[1], /starting_after=cs_2/);
++    const failing = (async () => Response.json({ error: { message: "Invalid API Key provided" } }, { status: 401 })) as typeof fetch;
++    await assert.rejects(listCompletedSessions("sk_test_abc", 1000, failing), (e: Error) => !e.message.includes("sk_test_abc") && /Invalid API Key/.test(e.message));
++  });
++});
+diff --git a/tsconfig.node.json b/tsconfig.node.json
+new file mode 100644
+index 0000000..a3dbdee
+--- /dev/null
++++ b/tsconfig.node.json
+@@ -0,0 +1,6 @@
++{
++  "extends": "./tsconfig.json",
++  "compilerOptions": { "noEmit": true, "incremental": false, "plugins": [], "allowImportingTsExtensions": true, "types": ["node"] },
++  "include": ["scripts/**/*.ts", "tests/**/*.ts", "lib/commerce/**/*.ts", "lib/catalog.ts", "lib/site.ts"],
++  "exclude": ["node_modules"]
++}
+-- 
+2.43.0
+
