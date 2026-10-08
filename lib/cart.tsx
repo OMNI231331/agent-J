@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
-import { findSku, MAX_PER_LINE, variantAvailability } from "./inventory";
+import { findSku, MAX_PER_LINE } from "./catalog";
 
 /** The cart only stores SKU + quantity. Name, price, color and size are always derived from the catalog. */
 export type CartLine = { sku: string; qty: number };
@@ -15,9 +15,9 @@ type Action =
 const KEY = "lsw.cart.v1";
 
 function maxFor(sku: string) {
+  // Live stock is only known to the server; it is re-checked atomically at checkout.
   const hit = findSku(sku);
-  if (!hit || variantAvailability(hit.product, hit.variant) !== "in_stock") return 0;
-  return Math.min(MAX_PER_LINE, hit.variant.stock ?? 0);
+  return hit && hit.product.purchasable ? MAX_PER_LINE : 0;
 }
 
 function reducer(lines: CartLine[], a: Action): CartLine[] {

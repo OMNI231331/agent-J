@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductCard } from "@/components/store/product-card";
+import { getStockMap } from "@/lib/commerce/stock";
 import { products, type Category } from "@/lib/catalog";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Shop", description: "Shop LSW DROP 001 — heavyweight hoodies, oversized tees and headwear." };
 
@@ -10,6 +13,7 @@ const sorts = { featured: "Featured", "price-asc": "Price: low to high", "price-
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; sort?: string }> }) {
   const sp = await searchParams;
+  const stock = await getStockMap();
   const category = categories.find((c) => c === sp.category) ?? "All";
   const sort = (Object.keys(sorts) as (keyof typeof sorts)[]).find((s) => s === sp.sort) ?? "featured";
   const list = products
@@ -36,7 +40,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       <p aria-live="polite" className="eyebrow mt-4">{list.length} {list.length === 1 ? "product" : "products"}</p>
       {list.length ? (
         <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
-          {list.map((p) => <ProductCard key={p.slug} product={p} />)}
+          {list.map((p) => <ProductCard key={p.slug} product={p} stock={stock} />)}
         </div>
       ) : (
         <p className="mt-16 text-steel">Nothing in this category yet.</p>

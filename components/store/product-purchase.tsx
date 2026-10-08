@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useModal } from "@/lib/use-modal";
 import { COLORS, money, type ColorId, type Product } from "@/lib/catalog";
-import { availabilityLabel, getVariant, MAX_PER_LINE, variantAvailability } from "@/lib/inventory";
+import { availabilityLabel, getVariant, MAX_PER_LINE, variantAvailability, type StockMap } from "@/lib/inventory";
 import { ProductArt } from "./product-art";
 import type { ArtView } from "./garment-art";
 
@@ -15,9 +15,9 @@ const VIEWS: { view: ArtView; label: string }[] = [
   { view: "label", label: "Label" },
 ];
 
-export function ProductPurchase({ product }: { product: Product }) {
+export function ProductPurchase({ product, stock }: { product: Product; stock: StockMap }) {
   const { add } = useCart();
-  const firstColor = product.colors.find((c) => product.variants.some((v) => v.color === c && variantAvailability(product, v) === "in_stock")) ?? product.colors[0];
+  const firstColor = product.colors.find((c) => product.variants.some((v) => v.color === c && variantAvailability(product, v, stock) === "in_stock")) ?? product.colors[0];
   const [color, setColor] = useState<ColorId>(firstColor);
   const [size, setSize] = useState<string | null>(product.sizes.length === 1 ? product.sizes[0] : null);
   const [view, setView] = useState<ArtView>("front");
@@ -25,17 +25,17 @@ export function ProductPurchase({ product }: { product: Product }) {
   const [guide, setGuide] = useState(false);
 
   const variant = size ? getVariant(product, color, size) : undefined;
-  const status = size ? variantAvailability(product, variant) : null;
+  const status = size ? variantAvailability(product, variant, stock) : null;
   const canBuy = status === "in_stock";
   const sizeStates = useMemo(
-    () => Object.fromEntries(product.sizes.map((s) => [s, variantAvailability(product, getVariant(product, color, s))])),
-    [product, color],
+    () => Object.fromEntries(product.sizes.map((s) => [s, variantAvailability(product, getVariant(product, color, s), stock)])),
+    [product, color, stock],
   );
 
   function changeColor(c: ColorId) {
     setColor(c);
     // keep the size only if it exists and is purchasable in the new colour
-    if (size && variantAvailability(product, getVariant(product, c, size)) !== "in_stock") setSize(null);
+    if (size && variantAvailability(product, getVariant(product, c, size), stock) !== "in_stock") setSize(null);
   }
 
   function addToBag() {

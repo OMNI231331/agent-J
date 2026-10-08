@@ -1,29 +1,27 @@
-import { products, type Product, type Variant } from "./catalog";
+import { findSku, MAX_PER_LINE, type Product, type Variant } from "./catalog";
 import { site } from "./site";
 
+export { findSku, MAX_PER_LINE };
 export type Availability = "in_stock" | "out_of_stock" | "unconfirmed" | "concept";
+/** Units available per SKU. `null` = not stocked / unknown. Produced server-side by lib/commerce/stock.ts. */
+export type StockMap = Record<string, number | null>;
 
-const bySku = new Map<string, { product: Product; variant: Variant }>(
-  products.flatMap((product) => product.variants.map((variant) => [variant.sku, { product, variant }] as const)),
-);
-
-export const findSku = (sku: string) => bySku.get(sku);
-
-/** Single place that decides whether a variant can be sold. Swap the stock source here. */
-export function variantAvailability(product: Product, variant: Variant | undefined): Availability {
+/** Single place that decides how a variant is displayed. The server re-checks everything at checkout. */
+export function variantAvailability(product: Product, variant: Variant | undefined, stock: StockMap): Availability {
   if (!product.purchasable) return "concept";
   // Safety: a live store never sells a product whose price is still a draft.
   if (site.mode === "live" && product.pricing !== "confirmed") return "unconfirmed";
-  if (!variant || variant.stock === null) return "unconfirmed";
-  return variant.stock > 0 ? "in_stock" : "out_of_stock";
+  const n = variant ? stock[variant.sku] : null;
+  if (n === null || n === undefined) return "unconfirmed";
+  return n > 0 ? "in_stock" : "out_of_stock";
 }
 
 export const getVariant = (product: Product, color: string, size: string) =>
   product.variants.find((v) => v.color === color && v.size === size);
 
-export function productAvailability(product: Product): Availability {
+export function productAvailability(product: Product, stock: StockMap): Availability {
   if (!product.purchasable) return "concept";
-  const states = product.variants.map((v) => variantAvailability(product, v));
+  const states = product.variants.map((v) => variantAvailability(product, v, stock));
   if (states.includes("in_stock")) return "in_stock";
   if (states.includes("unconfirmed")) return "unconfirmed";
   return "out_of_stock";
@@ -35,6 +33,3 @@ export const availabilityLabel: Record<Availability, string> = {
   unconfirmed: "Availability to be confirmed",
   concept: "Concept — not in production",
 };
-
-/** Max units per line a customer may buy (limited-drop guard; stock is checked separately). */
-export const MAX_PER_LINE = 3;

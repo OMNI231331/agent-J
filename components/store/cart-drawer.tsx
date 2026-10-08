@@ -6,7 +6,7 @@ import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { useModal } from "@/lib/use-modal";
 import { COLORS, money } from "@/lib/catalog";
-import { findSku, MAX_PER_LINE } from "@/lib/inventory";
+import { findSku, MAX_PER_LINE } from "@/lib/catalog";
 import { ProductArt } from "./product-art";
 
 export function CartDrawer() {
@@ -24,7 +24,9 @@ export function CartDrawer() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines }),
+        body: JSON.stringify({
+          lines: lines.map((l) => ({ sku: l.sku, qty: l.qty, priceCents: findSku(l.sku)?.product.priceCents })),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) throw new Error(data.error ?? "Checkout failed. Please try again.");
@@ -60,7 +62,7 @@ export function CartDrawer() {
                 const hit = findSku(l.sku);
                 if (!hit) return null;
                 const { product, variant } = hit;
-                const max = Math.min(MAX_PER_LINE, variant.stock ?? 0);
+                const max = MAX_PER_LINE;
                 return (
                   <li className="flex gap-4 py-5" key={l.sku}>
                     <Link className="img-frame block w-24 shrink-0" href={`/products/${product.slug}`} onClick={() => setOpen(false)}>

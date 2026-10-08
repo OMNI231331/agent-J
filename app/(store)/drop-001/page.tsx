@@ -3,12 +3,16 @@ import Link from "next/link";
 import { GarmentArt } from "@/components/store/garment-art";
 import { Monogram } from "@/components/store/logo";
 import { ProductCard } from "@/components/store/product-card";
+import { getStockMap } from "@/lib/commerce/stock";
 import { products } from "@/lib/catalog";
 import { site } from "@/lib/site";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Drop 001", description: "LSW DROP 001 — the first limited collection." };
 
-export default function DropPage() {
+export default async function DropPage() {
+  const stock = await getStockMap();
   return (
     <>
       <section className="relative overflow-hidden border-b border-line">
@@ -27,7 +31,7 @@ export default function DropPage() {
       <section className="container-lsw py-20">
         <h2 className="display text-3xl sm:text-5xl">The pieces</h2>
         <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-12 lg:grid-cols-4">
-          {products.map((p) => <ProductCard key={p.slug} product={p} />)}
+          {products.map((p) => <ProductCard key={p.slug} product={p} stock={stock} />)}
         </div>
       </section>
 
