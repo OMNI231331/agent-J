@@ -16,3 +16,14 @@ Visual concepts are on `/brand`. Sizes are starting points; confirm with your pr
 | Product info card | Fit, care, **crystal-care** instructions | 90 × 55 mm | 350 gsm | Crystal care is the likeliest support topic |
 
 **Start-up approach:** first drop = stock black mailer + printed stickers + hang tags + thank-you card. Add custom mailers/tissue at drop 002 when volume justifies minimums.
+
+## Print-ready files (`public/brand/tags/`)
+Generated from `scripts/build-brand-assets.ts`; 1 SVG unit = 1 mm, so each file prints at its stated size. These are layout proofs for the printer, not final production artwork. Foil, embossing and woven construction need the manufacturer's files.
+
+| File | Size | Notes |
+|---|---|---|
+| `hang-tag-front-50x90mm.svg` | 50 × 90 mm | Black, symbol and wordmark in silver, "DROP 001". Foil and deboss to be specified by the printer. |
+| `hang-tag-reverse-50x90mm.svg` | 50 × 90 mm | FAITH / DISCIPLINE / PURPOSE. QR is a placeholder box, not a code. Add the real code only once the store URL is live and tested. |
+| `neck-label-woven-40x60mm.svg` | 40 × 60 mm | `[SIZE]` is a placeholder to set per garment. |
+| `care-label-40x70mm.svg` | 40 × 70 mm | Fields intentionally blank. Fill only with manufacturer-confirmed content. |
+| `limited-label-35x35mm.svg` | 35 × 35 mm | `PIECE ___ / ___` stays blank until a tracked numbered run exists. |
