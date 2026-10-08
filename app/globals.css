@@ -26,6 +26,18 @@
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+
+  /* ---- LSW design system tokens ---- */
+  --font-display: var(--font-archivo), "Arial Narrow", Impact, sans-serif;
+  --color-ink: #0a0a0b;        /* page */
+  --color-coal: #111113;       /* raised surface */
+  --color-graphite: #1a1b1e;   /* cards, inputs */
+  --color-line: #2a2b2f;       /* thin borders */
+  --color-steel: #92959b;      /* secondary text (6.4:1 on ink) */
+  --color-silver: #c9ccd1;     /* metallic accent */
+  --color-bone: #ece9e2;       /* primary text, off-white */
+  --color-alert: #e8a0a0;      /* error text on dark */
+  --breakpoint-xs: 30rem;
 }
 
 :root {
@@ -97,4 +109,61 @@ button,
 input,
 textarea {
   font: inherit;
+}
+
+/* ================= LSW storefront ================= */
+body:has(.lsw) { background: #0a0a0b; }
+.lsw {
+  min-height: 100dvh;
+  background: var(--color-ink);
+  color: var(--color-bone);
+  font-family: var(--font-sans);
+}
+.lsw ::selection { background: var(--color-silver); color: var(--color-ink); }
+.lsw a, .lsw button, .lsw summary { -webkit-tap-highlight-color: transparent; }
+.lsw :focus-visible { outline: 2px solid var(--color-silver); outline-offset: 3px; }
+
+@layer components {
+  .lsw .display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 112%;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+  }
+  .lsw .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-steel);
+  }
+  .lsw .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .6rem;
+    min-height: 3rem; padding: 0 1.75rem;
+    font-family: var(--font-mono); font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
+    border: 1px solid var(--color-bone); background: var(--color-bone); color: var(--color-ink);
+    transition: background-color .2s, color .2s, border-color .2s, opacity .2s;
+    cursor: pointer;
+  }
+  .lsw .btn:hover { background: transparent; color: var(--color-bone); }
+  .lsw .btn-ghost { background: transparent; color: var(--color-bone); border-color: var(--color-line); }
+  .lsw .btn-ghost:hover { border-color: var(--color-silver); background: transparent; }
+  .lsw .btn:disabled, .lsw .btn[aria-disabled="true"] { opacity: .4; cursor: not-allowed; }
+  .lsw .btn:disabled:hover { background: var(--color-bone); color: var(--color-ink); }
+  .lsw .field {
+    width: 100%; min-height: 3rem; padding: 0 1rem;
+    background: var(--color-graphite); color: var(--color-bone);
+    border: 1px solid var(--color-line); border-radius: 0; font-size: 1rem;
+  }
+  .lsw .field::placeholder { color: var(--color-steel); }
+  .lsw .field[aria-invalid="true"] { border-color: var(--color-alert); }
+  .lsw .container-lsw { width: 100%; max-width: 88rem; margin-inline: auto; padding-inline: 1rem; }
+  @media (min-width: 48rem) { .lsw .container-lsw { padding-inline: 2rem; } }
+  .lsw .hairline { border-color: var(--color-line); }
+  .lsw .img-frame { background: var(--color-coal); border: 1px solid var(--color-line); overflow: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lsw *, .lsw *::before, .lsw *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
 }
