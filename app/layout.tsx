@@ -20,8 +20,8 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NORTHLINE — Everyday clothing",
-  description: "Everyday clothing, made to last.",
+  title: { default: "LSW | Premium Limited-Edition Streetwear", template: "%s | LSW" },
+  description: "LSW is premium limited-edition streetwear: faith, discipline, purpose.",
 };
 
 // The page and Eve routes validate the generated app's Better Auth session.

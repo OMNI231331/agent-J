@@ -98,3 +98,122 @@ input,
 textarea {
   font: inherit;
 }
+
+/* ---------- LSW storefront: motion, focus and large-display scaling ---------- */
+html {
+  scroll-behavior: smooth;
+}
+/* The site is sized in rem, so raising the root size scales the whole layout crisply on 1440p and 4K displays. */
+@media (min-width: 2200px) {
+  html:has(.lsw-site) {
+    font-size: 18px;
+  }
+}
+@media (min-width: 2800px) {
+  html:has(.lsw-site) {
+    font-size: 22px;
+  }
+}
+@media (min-width: 3400px) {
+  html:has(.lsw-site) {
+    font-size: 26px;
+  }
+}
+
+@keyframes lsw-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lsw-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes lsw-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes lsw-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lsw-site ::selection {
+  background: #d9dade;
+  color: #000;
+}
+.lsw-site :focus-visible {
+  outline: 2px solid #d9dade;
+  outline-offset: 3px;
+}
+.lsw-site a,
+.lsw-site button {
+  transition:
+    color 250ms ease,
+    background-color 250ms ease,
+    border-color 250ms ease,
+    opacity 250ms ease,
+    transform 250ms ease;
+}
+
+/* Runs on every page navigation (see app/(site)/template.tsx). */
+.lsw-page {
+  animation: lsw-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Staggered entrance for the hero; set the delay with style={{ "--d": "120ms" }}. */
+.lsw-rise {
+  animation: lsw-rise 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+/* Scroll reveal, pure CSS. Browsers without scroll-driven animations simply show the content. */
+@supports (animation-timeline: view()) {
+  .lsw-reveal {
+    animation: lsw-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
+}
+
+@media print {
+  .lsw-page,
+  .lsw-rise,
+  .lsw-reveal {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .lsw-page,
+  .lsw-rise,
+  .lsw-reveal {
+    animation: none !important;
+  }
+  .lsw-site *,
+  .lsw-site *::before,
+  .lsw-site *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
