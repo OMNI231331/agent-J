@@ -1,6 +1,7 @@
 {
   "name": "agent",
   "version": "0.0.0",
+  "packageManager": "pnpm@9.15.0",
   "type": "module",
   "imports": {
     "#*": "./agent/*",
