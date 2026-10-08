@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false, "plugins": [], "allowImportingTsExtensions": true, "types": ["node"] },
+  "include": ["scripts/**/*.ts", "tests/**/*.ts", "lib/commerce/**/*.ts", "lib/catalog.ts", "lib/site.ts"],
+  "exclude": ["node_modules"]
+}

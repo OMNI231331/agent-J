@@ -2,7 +2,7 @@
 // (via a local Upstash-protocol shim over redis-server) + a fake Stripe HTTP server.
 // Run: pnpm build && node scripts/smoke-test.ts
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { openSync } from "node:fs";
 import http from "node:http";
 import { createHmac } from "node:crypto";
@@ -15,7 +15,7 @@ const WHSEC = "whsec_smoke", CRON = "cron_smoke", TOKEN = "tok_smoke", APP_PORT 
 const SKU = "LSW001-HOOD-WASHED-BLACK-M";
 
 // ---- fake Stripe
-const sessions = new Map<string, { id: string; status: string; params: URLSearchParams }>();
+const sessions = new Map<string, { id: string; status: string; params: URLSearchParams; object?: Record<string, unknown> }>();
 const refundsMade: { body: URLSearchParams; idem: string | undefined }[] = [];
 let failNextRefund = false;
 const stripe = http.createServer((req, res) => {
@@ -34,6 +34,10 @@ const stripe = http.createServer((req, res) => {
       if (failNextRefund) { failNextRefund = false; return void res.writeHead(500).end(JSON.stringify({ error: { message: "temporary Stripe error" } })); }
       refundsMade.push({ body: new URLSearchParams(body), idem: req.headers["idempotency-key"] as string | undefined });
       return void res.end(JSON.stringify({ id: `re_test_${refundsMade.length}` }));
+    }
+    if (req.method === "GET" && url.pathname === "/v1/checkout/sessions") {
+      const done = [...sessions.values()].filter((s) => s.status === "complete").map((s) => s.object ?? { id: s.id, status: s.status });
+      return void res.end(JSON.stringify({ data: done, has_more: false }));
     }
     const m = url.pathname.match(/^\/v1\/checkout\/sessions\/([^/]+)(\/expire)?$/);
     const s = m && sessions.get(m[1]);
@@ -98,7 +102,13 @@ try {
     assert.equal((await webhook({ id: "evt_forged", type: "checkout.session.completed", data: { object: { id: sessionId, metadata: { reservation_id: resId }, payment_status: "paid" } } }, "whsec_wrong")).status, 400);
     assert.equal((await store.getOrder(sessionId)), null);
   });
-  const paid = { id: "evt_paid_1", type: "checkout.session.completed", data: { object: { id: "", metadata: { reservation_id: "" }, payment_status: "paid", amount_total: 12500, currency: "usd", customer_details: { email: "buyer@example.com" } } } };
+  const SHIP = { name: "Smoke Buyer", address: { line1: "1 Smoke Street", city: "Austin", state: "TX", postal_code: "78701", country: "US" } };
+  const paid = { id: "evt_paid_1", type: "checkout.session.completed", data: { object: { id: "", status: "complete", metadata: { reservation_id: "" }, payment_status: "paid", amount_total: 12500, amount_subtotal: 12500, currency: "usd", payment_intent: "pi_smoke_1", customer_details: { email: "buyer@example.com", name: "Smoke Buyer" }, collected_information: { shipping_details: SHIP } } } };
+  // Async on purpose: this process hosts the fake Stripe and the Upstash shim the CLI calls, so it must not block while the CLI runs.
+  const cli = (...args: string[]) =>
+    new Promise<{ status: number; stdout: string; stderr: string }>((resolve) =>
+      execFile("node", ["scripts/inventory.ts", ...args], { encoding: "utf8", timeout: 30_000, env: { ...process.env, UPSTASH_REDIS_REST_URL: shim.url, UPSTASH_REDIS_REST_TOKEN: TOKEN, STRIPE_SECRET_KEY: "sk_test_smoke", STRIPE_API_BASE: `http://127.0.0.1:${stripePort}/v1` } }, (err, stdout, stderr) =>
+        resolve({ status: err ? (typeof err.code === "number" ? err.code : 1) : 0, stdout, stderr })));
   await step("a signed 'paid' webhook creates the order and keeps the stock deducted", async () => {
     paid.data.object.id = sessionId; paid.data.object.metadata.reservation_id = resId;
     const r = await webhook(paid);
@@ -113,6 +123,51 @@ try {
     assert.equal(await stock(), 1);
     assert.equal(Number(await admin.command("ZCARD", "lsw:orders")), 1);
   });
+  await step("the order records the shipping address, payment id, items and an unfulfilled status", async () => {
+    const o = (await store.getOrder(sessionId))!;
+    assert.equal(o.fulfillment, "unfulfilled");
+    assert.equal(o.details.paymentIntent, "pi_smoke_1");
+    assert.equal(o.details.shipping?.address.city, "Austin");
+    assert.equal(o.details.items?.[0].sku, SKU);
+    assert.equal(o.details.amountSubtotal, 12500);
+    sessions.get(sessionId)!.status = "complete"; // Stripe now reports this session as complete
+    sessions.get(sessionId)!.object = paid.data.object;
+  });
+  await step("CLI: 'orders' shows the shipping address, payment id and fulfilment", async () => {
+    const r = await cli("orders");
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /pi_smoke_1/);
+    assert.match(r.stdout, /Austin/);
+    assert.match(r.stdout, /fulfilment unfulfilled/);
+  });
+  await step("CLI: 'reconcile' finds a paid Stripe session with no order, and --apply rebuilds it safely", async () => {
+    const id = "00000000-0000-4000-8000-0000000000bb";
+    await store.setStock({ [SKU]: 5 });
+    assert.deepEqual(await store.reserve(id, [{ sku: SKU, qty: 2 }], Date.now() + 3_600_000), { ok: true }); // customer paid, but our webhook never arrived
+    sessions.set("cs_lost_1", { id: "cs_lost_1", status: "complete", params: new URLSearchParams(), object: { id: "cs_lost_1", status: "complete", payment_status: "paid", metadata: { reservation_id: id }, amount_total: 25000, amount_subtotal: 25000, currency: "usd", payment_intent: "pi_lost_1", customer_details: { email: "lost@example.com" }, collected_information: { shipping_details: SHIP } } });
+    const dry = await cli("reconcile", "--days", "1");
+    assert.equal(dry.status, 2, "exit code 2 = needs attention");
+    assert.match(dry.stdout, /MISSING\s+cs_lost_1/);
+    assert.equal(await store.getOrder("cs_lost_1"), null, "a dry run changes nothing");
+    const fix = await cli("reconcile", "--days", "1", "--apply");
+    assert.equal(fix.status, 0, fix.stdout + fix.stderr);
+    assert.equal((await store.getOrder("cs_lost_1"))?.status, "paid");
+    assert.equal(await stock(), 3, "5 - 2 reserved, deducted once");
+    const again = await cli("reconcile", "--days", "1", "--apply");
+    assert.equal(again.status, 0);
+    assert.match(again.stdout, /missing in Redis: 0/);
+    assert.equal(await stock(), 3);
+    assert.equal(Number(await admin.command("ZCARD", "lsw:orders")), 2);
+    await store.setStock({ [SKU]: 1 });
+  });
+  await step("CLI: 'fulfill' marks a paid order shipped, and refuses an unpaid one", async () => {
+    const ok = await cli("fulfill", sessionId, "shipped", "TRACK123");
+    assert.equal(ok.status, 0, ok.stderr);
+    const o = (await store.getOrder(sessionId))!;
+    assert.equal(o.fulfillment, "shipped");
+    assert.equal(o.tracking, "TRACK123");
+    assert.equal((await cli("fulfill", "cs_does_not_exist", "shipped")).status, 1);
+  });
   await step("success page shows the confirmed order", async () => {
     const html = await (await fetch(`${B}/checkout/success?session_id=${sessionId}`)).text();
     assert.match(html, /Order confirmed/);
@@ -121,7 +176,7 @@ try {
     const r = await post("/api/checkout", { lines: [{ sku: SKU, qty: 1 }] });
     assert.equal(r.status, 200);
     assert.equal(await stock(), 0);
-    const sid = [...sessions.keys()][1];
+    const sid = [...sessions.keys()].filter((k) => k.startsWith("cs_test_")).pop()!; // the session this checkout just created
     const rid = sessions.get(sid)!.params.get("metadata[reservation_id]")!;
     const c = await post("/api/checkout/cancel", { reservationId: rid });
     assert.equal(((await c.json()) as { outcome: string }).outcome, "released");

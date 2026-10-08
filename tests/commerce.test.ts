@@ -425,6 +425,9 @@ describe("checkout session creation and cancellation", () => {
         status = "expired";
         return { id, status };
       },
+      async createRefund() {
+        throw new Error("checkout tests never refund");
+      },
     };
     return { api, calls };
   }
