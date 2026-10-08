@@ -1,0 +1,13 @@
+{
+  "id": "P002",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "trust",
+  "reason": "$38 for a tee is double what I pay at Uniqlo or H&M, and I've never heard of Northline. I'm not putting money on a brand with no real customer reviews or photos I can check.",
+  "objection": "There's nothing here I can verify. No customer photos, no reviews, no way to see how a 240gsm boxy tee actually fits or holds up after a wash, and I'd be paying Uniqlo-plus prices on the brand's word alone.",
+  "would_change_my_mind": "A bunch of real customer reviews with photos showing the fit and fabric after washing, plus a tee closer to $25 or an easy free return so I'm not stuck with it.",
+  "price_too_cheap": 8,
+  "price_cheap": 15,
+  "price_expensive": 30,
+  "price_too_expensive": 45
+}

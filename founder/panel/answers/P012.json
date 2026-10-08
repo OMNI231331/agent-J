@@ -1,0 +1,13 @@
+{
+  "id": "P012",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "trust",
+  "reason": "I've never heard of Northline and $38 for a tee is more than I usually pay when I wait for a sale. 15% off a first order isn't enough of a deal to make me risk it on a brand I can't check out.",
+  "objection": "How do I know the quality is really better? Every brand says quality fabric at fair prices, and I can't feel it or read real reviews, so I'd be paying $38 on faith.",
+  "would_change_my_mind": "Lots of real reviews with photos from actual customers, plus free returns. Or a bigger first-order deal, like 30% off or a tee under $25, so I'm not risking much to test it.",
+  "price_too_cheap": 12,
+  "price_cheap": 22,
+  "price_expensive": 35,
+  "price_too_expensive": 50
+}

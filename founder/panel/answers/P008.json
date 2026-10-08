@@ -1,0 +1,13 @@
+{
+  "id": "P008",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "trust",
+  "reason": "I've never heard of them, there's nothing here from real customers, and it doesn't say anything about shipping costs or returns. I've been burned on sizes enough that I won't hand over $38+ to an unknown brand online.",
+  "objection": "No reviews or real-customer photos, no size info, and nothing about shipping cost or free returns. If the fit is off I'm stuck paying to send it back.",
+  "would_change_my_mind": "Free returns and free or cheap shipping stated clearly, plus a bunch of real customer reviews and photos with sizing details so I can see how the boxy fit actually looks on people my size.",
+  "price_too_cheap": 14,
+  "price_cheap": 24,
+  "price_expensive": 42,
+  "price_too_expensive": 58
+}

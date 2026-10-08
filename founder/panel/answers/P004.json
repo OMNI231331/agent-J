@@ -1,0 +1,13 @@
+{
+  "id": "P004",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "price",
+  "reason": "$38 for a tee is way more than I pay at H&M or Uniqlo, and even with 15% off it's still over $32 for one shirt. On my budget I'd rather get three tees for that.",
+  "objection": "I can't tell if a 240gsm organic cotton tee is actually worth double what I pay for a basic tee now. I have no reviews or proof, and the hoodie at $78 is a week of my pay for something I'd wear to death.",
+  "would_change_my_mind": "A plain tee closer to $20, or a deal that gets it near what I pay at H&M, plus real reviews from people saying it holds up after washing.",
+  "price_too_cheap": 5,
+  "price_cheap": 12,
+  "price_expensive": 22,
+  "price_too_expensive": 32
+}

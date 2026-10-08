@@ -1,0 +1,13 @@
+{
+  "id": "P015",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "trust",
+  "reason": "I've never heard of Northline, and I buy maybe one thing a month from brands I already know like Uniqlo or Nike. I'm not putting my limited money on a brand I can't vouch for.",
+  "objection": "I've never heard of them, so I don't know if the tee will actually be good or if it'll shrink or fall apart after a couple washes. $38 for a tee is a lot when Uniqlo is half that and I know what I'm getting.",
+  "would_change_my_mind": "Seeing it on people I follow or in real reviews, plus a free-returns guarantee, and a tee closer to $25.",
+  "price_too_cheap": 8,
+  "price_cheap": 15,
+  "price_expensive": 30,
+  "price_too_expensive": 42
+}
