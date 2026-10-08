@@ -23,7 +23,7 @@ export function SignIn() {
     setError(undefined);
     try {
       const result = await authClient.signIn.social({
-        callbackURL: "/",
+        callbackURL: "/assistant",
         provider: "vercel",
       });
       if (!result.error) return;
@@ -107,7 +107,7 @@ export function AccountControl({
       await authClient.signOut({
         fetchOptions: {
           onError: () => setPending(false),
-          onSuccess: () => window.location.assign("/"),
+          onSuccess: () => window.location.assign("/assistant"),
         },
       });
     } catch {
