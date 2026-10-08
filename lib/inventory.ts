@@ -1,4 +1,5 @@
 import { products, type Product, type Variant } from "./catalog";
+import { site } from "./site";
 
 export type Availability = "in_stock" | "out_of_stock" | "unconfirmed" | "concept";
 
@@ -11,6 +12,8 @@ export const findSku = (sku: string) => bySku.get(sku);
 /** Single place that decides whether a variant can be sold. Swap the stock source here. */
 export function variantAvailability(product: Product, variant: Variant | undefined): Availability {
   if (!product.purchasable) return "concept";
+  // Safety: a live store never sells a product whose price is still a draft.
+  if (site.mode === "live" && product.pricing !== "confirmed") return "unconfirmed";
   if (!variant || variant.stock === null) return "unconfirmed";
   return variant.stock > 0 ? "in_stock" : "out_of_stock";
 }

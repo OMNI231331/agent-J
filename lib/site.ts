@@ -1,8 +1,8 @@
 export const site = {
   name: "LSW",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  /** Only shown when configured — we never invent contact details. */
-  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? null,
+  /** Provided by the founder. Override with NEXT_PUBLIC_CONTACT_EMAIL (e.g. a branded address later). */
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "caleb.bowland@fwcsstudents.org",
   /** Add real handles in env once accounts exist. Nothing is invented. */
   social: {
     instagram: process.env.NEXT_PUBLIC_INSTAGRAM_URL ?? null,
