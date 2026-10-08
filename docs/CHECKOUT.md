@@ -7,7 +7,8 @@ How it works
 - **Webhook** (`POST /api/stripe/webhook`): signature-verified (HMAC-SHA256, 5-min replay window), idempotent (duplicate / racing deliveries change nothing, out-of-order events can't move an order backwards).
 - **Failure paths:** `checkout.session.expired`, `async_payment_failed`, cancel button → stock released. Customer pressing back → `/checkout/cancelled` expires the Stripe session and releases stock. Daily cron + a sweep before every new checkout release any hold that was missed.
 - **Hoarding guard:** max 8 checkout starts per IP per 10 minutes (HTTP 429 after that), plus per-item limit of 3. It slows scripted hoarding; it doesn't stop a determined attacker with many IPs.
-- **Late payment edge case:** if a payment lands after its hold was released and the stock was resold, the order is marked `needs_attention` (never oversold). You must refund or fulfil it by hand — run `pnpm inventory orders`.
+- **Late payment edge case:** if a payment lands after its hold was released and the stock was resold, the customer is **refunded in full automatically** (never oversold) and the order is marked `refunded`. If Stripe's refund call fails, the webhook answers 500 so Stripe retries; each retry reuses the same Stripe idempotency key, so the customer is refunded exactly once. Only if Stripe gives no payment id is the order left as `needs_attention` for a manual refund (`pnpm inventory orders`).
+- **Amount check:** the subtotal Stripe charged must equal the subtotal reserved at catalog prices; if not, the order is flagged `needs_attention` for review before shipping.
 
 ## 1. Upstash Redis
 1. Create an account at https://console.upstash.com → **Create database** → name `lsw-inventory`, type *Regional*, a region close to your Vercel functions (US East if unsure), TLS on.
@@ -62,14 +63,14 @@ Use the **real production counts** for each SKU only after the garments exist. D
 ## 6. Automated tests
 ```bash
 pnpm typecheck
-pnpm test        # needs redis-server installed locally; 46 tests on real Redis: stock limits, concurrent buyers, duplicate/racing webhooks, expired/failed payments, signatures, validation
+pnpm test        # needs redis-server installed locally; 52 tests on real Redis: stock limits, concurrent buyers, duplicate/racing webhooks, expired/failed payments, automatic refunds and refund retries, signatures, validation
 pnpm build && pnpm smoke   # full purchase against the built app (real Upstash client + fake Stripe)
 ```
 CI (`.github/workflows/test.yml`) runs all of these on every pull request.
 
 ## What these tests do **not** cover
 - Real Stripe and real Upstash over the internet (only test doubles/local Redis here) — **step 5 is the real proof; do it before anything else.**
-- Real card networks, 3-D Secure flows, refunds, disputes, tax correctness, shipping rates.
+- Real card networks, 3-D Secure flows, real refunds against Stripe (the refund logic is tested against a fake Stripe), disputes, tax correctness, shipping rates.
 - Email delivery of receipts. Order-management UI (orders are in Redis; read them with `pnpm inventory orders`).
 - Vercel Cron on the Hobby plan runs at most daily; the webhook + pre-checkout sweep are the primary release paths.
 

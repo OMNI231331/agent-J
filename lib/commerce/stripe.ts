@@ -35,6 +35,8 @@ export type CheckoutSession = {
   status?: "open" | "complete" | "expired";
   payment_status?: "paid" | "unpaid" | "no_payment_required";
   amount_total?: number | null;
+  amount_subtotal?: number | null;
+  payment_intent?: string | null;
   currency?: string | null;
   client_reference_id?: string | null;
   metadata?: Record<string, string> | null;
@@ -46,6 +48,8 @@ export interface StripeApi {
   createCheckoutSession(params: URLSearchParams, idempotencyKey: string): Promise<CheckoutSession>;
   retrieveCheckoutSession(id: string): Promise<CheckoutSession>;
   expireCheckoutSession(id: string): Promise<CheckoutSession>;
+  /** Full refund of a payment. The idempotency key makes retries safe: Stripe returns the first refund instead of creating another. */
+  createRefund(paymentIntentId: string, idempotencyKey: string, reservationId: string): Promise<{ id: string }>;
 }
 
 export class StripeError extends Error {
@@ -72,6 +76,10 @@ export function stripeClient(secretKey: string, fetchImpl: typeof fetch = fetch)
     createCheckoutSession: (params, idem) => call("POST", "/checkout/sessions", params, idem),
     retrieveCheckoutSession: (id) => call("GET", `/checkout/sessions/${encodeURIComponent(id)}`),
     expireCheckoutSession: (id) => call("POST", `/checkout/sessions/${encodeURIComponent(id)}/expire`, new URLSearchParams()),
+    createRefund: async (paymentIntentId, idem, reservationId) => {
+      const body = new URLSearchParams({ payment_intent: paymentIntentId, reason: "requested_by_customer", "metadata[reservation_id]": reservationId });
+      return (await call("POST", "/refunds", body, idem)) as unknown as { id: string };
+    },
   };
 }
 

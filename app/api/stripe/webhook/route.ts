@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getStore } from "@/lib/commerce/redis";
+import { commerceConfig } from "@/lib/commerce/config";
 import { verifyStripeSignature } from "@/lib/commerce/stripe";
 import { handleStripeEvent, type StripeEvent } from "@/lib/commerce/webhook";
 
@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  const store = getStore();
-  if (!secret || !store) return NextResponse.json({ error: "not configured" }, { status: 503 });
+  const cfg = commerceConfig();
+  if (!secret || !cfg.ok) return NextResponse.json({ error: "not configured" }, { status: 503 });
 
   const raw = await req.text();
   if (!verifyStripeSignature(raw, req.headers.get("stripe-signature"), secret)) {
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
   try {
-    const result = await handleStripeEvent(event, store);
+    const result = await handleStripeEvent(event, cfg.store, { refunds: cfg.stripe });
     return NextResponse.json({ received: true, ...result });
   } catch (e) {
     console.error("webhook: processing failed", event.id, event.type, e instanceof Error ? e.message : e);

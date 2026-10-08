@@ -7,8 +7,8 @@ export interface RedisLike {
 
 export type Line = { sku: string; qty: number };
 export type ReservationStatus = "reserved" | "awaiting_payment" | "committed" | "committed_oversold" | "released";
-export type Reservation = { id: string; status: ReservationStatus; lines: Line[]; expiresAt: number; sessionId?: string; reason?: string };
-export type OrderStatus = "awaiting_payment" | "paid" | "payment_failed" | "needs_attention";
+export type Reservation = { id: string; status: ReservationStatus; lines: Line[]; expiresAt: number; sessionId?: string; reason?: string; subtotalCents?: number };
+export type OrderStatus = "awaiting_payment" | "paid" | "payment_failed" | "needs_attention" | "refunded";
 export type Order = { sessionId: string; status: OrderStatus; createdAt: number; updatedAt: number; details: OrderDetails };
 export type OrderDetails = {
   reservationId: string;
@@ -16,6 +16,7 @@ export type OrderDetails = {
   amountTotal: number | null;
   currency: string | null;
   email: string | null;
+  paymentIntent?: string | null;
   note?: string;
 };
 
@@ -32,7 +33,7 @@ export const K = {
 
 /** Terminal reservations and processed-event markers are kept 30 days for audit and duplicate detection. */
 export const RETENTION_SEC = 60 * 60 * 24 * 30;
-const ORDER_RANK: Record<OrderStatus, number> = { awaiting_payment: 1, paid: 2, payment_failed: 2, needs_attention: 3 };
+const ORDER_RANK: Record<OrderStatus, number> = { awaiting_payment: 1, paid: 2, payment_failed: 2, needs_attention: 3, refunded: 4 };
 
 /** Canonical encoding: merged, sorted by SKU, so the same cart always produces the same string. */
 export function normalizeLines(lines: Line[]): Line[] {
@@ -105,11 +106,13 @@ export class InventoryStore {
       expiresAt: Number(h.expiresAt),
       sessionId: h.sessionId || undefined,
       reason: h.reason || undefined,
+      subtotalCents: h.subtotalCents ? Number(h.subtotalCents) : undefined,
     };
   }
 
-  async attachSession(id: string, sessionId: string): Promise<void> {
-    await this.r.eval(S.HSET, [K.res(id)], ["sessionId", sessionId]);
+  /** Links the Stripe session and records the subtotal we reserved at catalog prices, so the webhook can check what Stripe charged. */
+  async attachSession(id: string, sessionId: string, subtotalCents: number): Promise<void> {
+    await this.r.eval(S.HSET, [K.res(id)], ["sessionId", sessionId, "subtotalCents", String(subtotalCents)]);
   }
 
   private async withLines(script: string, id: string, args: (lines: string) => string[]): Promise<string> {

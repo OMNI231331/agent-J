@@ -157,7 +157,7 @@ describe("webhook processing", () => {
     await store.setStock({ [HOODIE]: start });
     const id = rid();
     await store.reserve(id, [{ sku: HOODIE, qty }], FUTURE());
-    await store.attachSession(id, "cs_test_1");
+    await store.attachSession(id, "cs_test_1", findSku(HOODIE)!.product.priceCents * qty);
     return id;
   }
 
@@ -240,11 +240,93 @@ describe("webhook processing", () => {
     await store.release(id, "test-expired");
     await store.reserve(rid(), [{ sku: HOODIE, qty: 1 }], FUTURE()); // someone else buys the last one
     const r = await handleStripeEvent(event("checkout.session.completed", { payment_status: "paid", metadata: { reservation_id: id } }), store);
-    assert.equal(r.outcome, "oversold");
+    assert.equal(r.outcome, "oversold_manual_refund", "without a Stripe client the order is flagged for a manual refund");
     assert.equal(await stock(HOODIE), 0, "stock must not go negative");
     const order = await store.getOrder("cs_test_1");
     assert.equal(order?.status, "needs_attention");
-    assert.match(order!.details.note!, /Refund or fulfil manually/);
+    assert.match(order!.details.note!, /Refund this customer manually/);
+  });
+
+  describe("automatic refund when a late payment can't be fulfilled", () => {
+    const price = findSku(HOODIE)!.product.priceCents;
+    function refunds(failFirst = 0) {
+      const calls: { pi: string; key: string; reservationId: string; ok: boolean }[] = [];
+      let toFail = failFirst;
+      return {
+        calls,
+        api: {
+          async createRefund(pi: string, key: string, reservationId: string) {
+            const ok = toFail-- <= 0;
+            calls.push({ pi, key, reservationId, ok });
+            if (!ok) throw new Error("Stripe API timeout");
+            return { id: "re_test_1" };
+          },
+        },
+      };
+    }
+    async function soldOutLatePayment() {
+      const id = await reserved(1, 1);
+      await store.release(id, "test-expired");
+      await store.reserve(rid(), [{ sku: HOODIE, qty: 1 }], FUTURE()); // someone else buys the last one
+      return id;
+    }
+    const paidEvent = (id: string, evtId: string) => event("checkout.session.completed", { payment_status: "paid", payment_intent: "pi_test_1", amount_subtotal: price, metadata: { reservation_id: id } }, evtId);
+
+    test("refunds the customer in full, once, and records the order as refunded", async () => {
+      const id = await soldOutLatePayment();
+      const r = refunds();
+      const out = await handleStripeEvent(paidEvent(id, "evt_a"), store, { refunds: r.api });
+      assert.equal(out.outcome, "refunded_out_of_stock");
+      assert.deepEqual(r.calls, [{ pi: "pi_test_1", key: `refund_${id}`, reservationId: id, ok: true }]);
+      assert.equal((await store.getOrder("cs_test_1"))?.status, "refunded");
+      assert.equal(await stock(HOODIE), 0);
+    });
+
+    test("if the refund call FAILS, Stripe's retry refunds the customer (the order is never stuck charged-but-unrefunded)", async () => {
+      const id = await soldOutLatePayment();
+      const r = refunds(1);
+      const e = paidEvent(id, "evt_b");
+      await assert.rejects(handleStripeEvent(e, store, { refunds: r.api }), /timeout/); // route would answer 500
+      assert.equal((await store.getOrder("cs_test_1"))?.status, "needs_attention");
+      assert.equal(await store.isEventProcessed("evt_b"), false, "failed event must not be marked processed");
+      const retry = await handleStripeEvent(e, store, { refunds: r.api }); // Stripe redelivers the same event
+      assert.equal(retry.outcome, "refunded_out_of_stock");
+      assert.deepEqual(r.calls.map((c) => c.ok), [false, true]);
+      assert.equal((await store.getOrder("cs_test_1"))?.status, "refunded");
+      assert.equal(new Set(r.calls.map((c) => c.key)).size, 1, "same idempotency key on every attempt, so Stripe can never refund twice");
+    });
+
+    test("a later duplicate event never refunds again", async () => {
+      const id = await soldOutLatePayment();
+      const r = refunds();
+      await handleStripeEvent(paidEvent(id, "evt_c"), store, { refunds: r.api });
+      await handleStripeEvent(paidEvent(id, "evt_c"), store, { refunds: r.api }); // same event id
+      assert.equal(r.calls.length, 1);
+    });
+
+    test("without a payment intent the order is flagged for manual refund, nothing is guessed", async () => {
+      const id = await soldOutLatePayment();
+      const r = refunds();
+      const e = event("checkout.session.completed", { payment_status: "paid", metadata: { reservation_id: id } }, "evt_d");
+      assert.equal((await handleStripeEvent(e, store, { refunds: r.api })).outcome, "oversold_manual_refund");
+      assert.equal(r.calls.length, 0);
+    });
+  });
+
+  test("an amount charged that differs from the reserved subtotal is flagged for review (stock still committed)", async () => {
+    const id = await reserved(1, 5);
+    const e = event("checkout.session.completed", { payment_status: "paid", amount_subtotal: 100, metadata: { reservation_id: id } });
+    await handleStripeEvent(e, store);
+    const order = await store.getOrder("cs_test_1");
+    assert.equal(order?.status, "needs_attention");
+    assert.match(order!.details.note!, /charged a subtotal of 100/);
+    assert.equal(await stock(HOODIE), 4);
+  });
+
+  test("a matching charged amount is a normal paid order", async () => {
+    const id = await reserved(2, 5);
+    await handleStripeEvent(event("checkout.session.completed", { payment_status: "paid", amount_subtotal: findSku(HOODIE)!.product.priceCents * 2, metadata: { reservation_id: id } }), store);
+    assert.equal((await store.getOrder("cs_test_1"))?.status, "paid");
   });
 
   test("unrelated event types are ignored", async () => {

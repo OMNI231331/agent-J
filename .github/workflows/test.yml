@@ -13,8 +13,7 @@ jobs:
       VERCEL_APP_CLIENT_SECRET: ci
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 10 }
+      - uses: pnpm/action-setup@v4   # version comes from package.json "packageManager" (setting both makes the action fail)
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: pnpm }
       - run: sudo apt-get update && sudo apt-get install -y redis-server && sudo systemctl stop redis-server || true

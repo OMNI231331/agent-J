@@ -46,7 +46,8 @@ export async function startCheckout(input: unknown, deps: CheckoutDeps): Promise
   try {
     const session = await deps.stripe.createCheckoutSession(sessionParams(id, v.lines, sessionExpiresAt, deps), id);
     if (!session.url) throw new StripeError("Stripe returned no checkout URL", 502);
-    await deps.store.attachSession(id, session.id);
+    const subtotal = v.lines.reduce((sum, l) => sum + findSku(l.sku)!.product.priceCents * l.qty, 0);
+    await deps.store.attachSession(id, session.id, subtotal);
     return { ok: true, url: session.url, reservationId: id };
   } catch (e) {
     await deps.store.release(id, "stripe_error").catch(() => undefined);

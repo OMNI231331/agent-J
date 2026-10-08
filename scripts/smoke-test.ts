@@ -16,6 +16,8 @@ const SKU = "LSW001-HOOD-WASHED-BLACK-M";
 
 // ---- fake Stripe
 const sessions = new Map<string, { id: string; status: string; params: URLSearchParams }>();
+const refundsMade: { body: URLSearchParams; idem: string | undefined }[] = [];
+let failNextRefund = false;
 const stripe = http.createServer((req, res) => {
   let body = "";
   req.on("data", (c) => (body += c));
@@ -27,6 +29,11 @@ const stripe = http.createServer((req, res) => {
       const id = `cs_test_${sessions.size + 1}`;
       sessions.set(id, { id, status: "open", params: new URLSearchParams(body) });
       return void res.end(JSON.stringify({ id, url: `https://checkout.stripe.test/${id}`, status: "open" }));
+    }
+    if (req.method === "POST" && url.pathname === "/v1/refunds") {
+      if (failNextRefund) { failNextRefund = false; return void res.writeHead(500).end(JSON.stringify({ error: { message: "temporary Stripe error" } })); }
+      refundsMade.push({ body: new URLSearchParams(body), idem: req.headers["idempotency-key"] as string | undefined });
+      return void res.end(JSON.stringify({ id: `re_test_${refundsMade.length}` }));
     }
     const m = url.pathname.match(/^\/v1\/checkout\/sessions\/([^/]+)(\/expire)?$/);
     const s = m && sessions.get(m[1]);
@@ -132,6 +139,27 @@ try {
     for (let i = 0; i < 12; i++) last = (await post("/api/checkout", { lines: [] }, { "x-forwarded-for": "203.0.113.9" })).status;
     assert.equal(last, 429);
     assert.equal((await post("/api/checkout", { lines: [] }, { "x-forwarded-for": "203.0.113.10" })).status, 400, "other IPs are unaffected");
+  });
+  await step("late payment after sell-out: first refund attempt fails, Stripe's retry refunds the customer exactly once", async () => {
+    await store.setStock({ [SKU]: 1 });
+    const mk = async () => { const r = await post("/api/checkout", { lines: [{ sku: SKU, qty: 1 }] }, { "x-forwarded-for": `198.51.100.${sessions.size + 20}` }); assert.equal(r.status, 200); const sid = [...sessions.keys()].at(-1)!; return { sid, rid: sessions.get(sid)!.params.get("metadata[reservation_id]")! }; };
+    const a = await mk();                                   // buyer A reserves the last unit...
+    await store.release(a.rid, "test-hold-expired");        // ...their hold expires and the unit returns to stock
+    await mk();                                             // buyer B takes it
+    assert.equal(await stock(), 0);
+    const evt = { id: "evt_late_1", type: "checkout.session.completed", data: { object: { id: a.sid, metadata: { reservation_id: a.rid }, payment_status: "paid", payment_intent: "pi_smoke_1", amount_subtotal: 12500, amount_total: 12500, currency: "usd" } } };
+    failNextRefund = true;
+    assert.equal((await webhook(evt)).status, 500, "a failed refund must make Stripe retry");
+    assert.equal(refundsMade.length, 0);
+    assert.equal((await webhook(evt)).status, 200);          // Stripe redelivers the same event
+    assert.equal(refundsMade.length, 1);
+    assert.equal(refundsMade[0].body.get("payment_intent"), "pi_smoke_1");
+    assert.equal(refundsMade[0].idem, `refund_${a.rid}`);
+    assert.equal((await store.getOrder(a.sid))?.status, "refunded");
+    assert.equal((await webhook(evt)).status, 200);          // and a further duplicate does nothing
+    assert.equal(refundsMade.length, 1);
+    assert.equal(await stock(), 0);
+    await store.setStock({ [SKU]: 1 });
   });
   await step("cron endpoint requires its secret and releases expired holds", async () => {
     assert.equal((await fetch(`${B}/api/cron/release-reservations`)).status, 401);
