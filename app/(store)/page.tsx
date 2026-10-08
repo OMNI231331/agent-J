@@ -2,12 +2,16 @@ import Link from "next/link";
 import { Monogram, Wordmark } from "@/components/store/logo";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { ProductCard } from "@/components/store/product-card";
+import { getStockMap } from "@/lib/commerce/stock";
 import { GarmentArt } from "@/components/store/garment-art";
 import { products } from "@/lib/catalog";
 
+export const dynamic = "force-dynamic";
+
 const GRAIN = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-export default function Home() {
+export default async function Home() {
+  const stock = await getStockMap();
   const featured = products.slice(0, 3);
   return (
     <>
@@ -46,7 +50,7 @@ export default function Home() {
         </div>
         <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-12 lg:grid-cols-3">
           {featured.map((p, i) => (
-            <div className={i === 2 ? "col-span-2 mx-auto w-1/2 lg:col-span-1 lg:w-full" : ""} key={p.slug}><ProductCard product={p} /></div>
+            <div className={i === 2 ? "col-span-2 mx-auto w-1/2 lg:col-span-1 lg:w-full" : ""} key={p.slug}><ProductCard product={p} stock={stock} /></div>
           ))}
         </div>
       </section>

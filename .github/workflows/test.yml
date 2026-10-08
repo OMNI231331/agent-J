@@ -1,0 +1,24 @@
+name: test
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_URL: localhost:3000
+      BETTER_AUTH_SECRET: ci-only-secret-0123456789abcdef
+      VERCEL_APP_CLIENT_ID: ci
+      VERCEL_APP_CLIENT_SECRET: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4   # version comes from package.json "packageManager" (setting both makes the action fail)
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: sudo apt-get update && sudo apt-get install -y redis-server && sudo systemctl stop redis-server || true
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test            # stock limits, concurrency, webhooks, signatures, validation (real Redis)
+      - run: pnpm build
+      - run: node scripts/smoke-test.ts   # full purchase flow against the built app

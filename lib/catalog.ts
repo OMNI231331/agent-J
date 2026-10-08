@@ -46,8 +46,11 @@ export type Product = {
   sizeGuide: { note: string; rows: { size: string; chest?: string; length?: string; sleeve?: string }[] };
 };
 
-/** "demo" = placeholder numbers. Switch to "live" only after wiring real inventory. */
-export const INVENTORY_SOURCE: "demo" | "live" = "demo";
+/**
+ * `stock` on each variant is a DEMO SEED only. Real availability lives in Upstash Redis
+ * (lib/commerce). The seed is shown in preview mode when Redis isn't configured, and is
+ * never used to sell anything.
+ */
 
 const SIZES_APPAREL = ["S", "M", "L", "XL", "XXL"];
 
@@ -179,3 +182,12 @@ export const getProduct = (slug: string) => products.find((p) => p.slug === slug
 export const dropProducts = products;
 export const money = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
+
+const bySku = new Map<string, { product: Product; variant: Variant }>(
+  products.flatMap((product) => product.variants.map((variant) => [variant.sku, { product, variant }] as const)),
+);
+export const findSku = (sku: string) => bySku.get(sku);
+export const allSkus = () => [...bySku.keys()];
+
+/** Max units of one variant per order (limited-drop guard; stock is checked separately). */
+export const MAX_PER_LINE = 3;

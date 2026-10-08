@@ -16,9 +16,9 @@ Mobile menu navigation · shop filter/sort · color/size selection (unavailable 
 ## Not live until configured
 | Item | State | To do |
 |---|---|---|
-| Payments | `/api/checkout` creates Stripe Checkout sessions, re-pricing and re-checking stock server-side; clean 503 without a key | Stripe account → `STRIPE_SECRET_KEY` (**`sk_test_` = test mode**, `sk_live_` = real charges), shipping rate id, Stripe Tax. Live keys are refused while `INVENTORY_SOURCE = "demo"` |
-| Order confirmation / stock decrement | Success page only; **no webhook yet** | Stripe webhook (`checkout.session.completed`) → decrement stock, send confirmation. Required before selling real limited stock |
-| Inventory | Demo numbers in `lib/catalog.ts`; counts never shown | Real counts; set `INVENTORY_SOURCE = "live"` |
+| Payments | Stripe Checkout + signed webhook + atomic Redis inventory are implemented and tested against test doubles (`docs/CHECKOUT.md`). **Not yet verified against real Stripe/Upstash.** | Follow `docs/CHECKOUT.md` steps 1–5 in **test mode** first. Live keys stay refused until `ALLOW_LIVE_PAYMENTS=true` and `NEXT_PUBLIC_STORE_MODE=live`. |
+| Order confirmation | Success page shows real order status; Stripe emails the receipt once enabled in Stripe settings. No order-admin UI (use `pnpm inventory orders`). `needs_attention` orders need a manual refund. | Enable Stripe customer receipts; decide on order emails/admin later. |
+| Inventory | Upstash Redis per size×color SKU, reserved atomically. Catalog `stock` is a demo seed only. | Create Upstash DB, add env vars, set real counts with `pnpm inventory` (`docs/CHECKOUT.md`). |
 | Email sign-up | `/api/subscribe` → Resend Audience; 503 (and a visible message) without config | `RESEND_API_KEY`, `RESEND_AUDIENCE_ID`, verified sending domain, unsubscribe flow |
 | Prices | **Not decided yet** — $125/$55/$35 are placeholders shown as "Draft price". With `NEXT_PUBLIC_STORE_MODE=live` the store refuses to sell any product whose pricing isn't `"confirmed"` | Cost out with real quotes (`docs/BUSINESS.md`), set prices, mark `pricing: "confirmed"` |
 | Specs | Fabric/GSM/composition/measurements/care are unconfirmed targets (UI says so) | Fill after samples; size guide table |

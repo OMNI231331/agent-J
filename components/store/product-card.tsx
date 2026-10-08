@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { COLORS, money, type Product } from "@/lib/catalog";
-import { availabilityLabel, productAvailability } from "@/lib/inventory";
+import { availabilityLabel, productAvailability, type StockMap } from "@/lib/inventory";
 import { ProductArt } from "./product-art";
 
-export function ProductCard({ product }: { product: Product }) {
-  const status = productAvailability(product);
+export function ProductCard({ product, stock }: { product: Product; stock: StockMap }) {
+  const status = productAvailability(product, stock);
   return (
     <article className="group">
       <Link className="block" href={`/products/${product.slug}`}>
