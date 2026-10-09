@@ -53,6 +53,8 @@ export const K = {
 
 /** Terminal reservations and processed-event markers are kept 30 days for audit and duplicate detection. */
 export const RETENTION_SEC = 60 * 60 * 24 * 30;
+// Higher rank wins; an order never moves to a lower rank. A late "payment failed" can never overwrite "paid".
+const ORDER_RANK: Record<OrderStatus, number> = { awaiting_payment: 1, payment_failed: 2, paid: 3, needs_attention: 4, refunded: 5 };
 /**
  * Order status only moves up this ladder. paid outranks payment_failed so a stray or replayed "failed" event can
  * never overwrite a paid order; refunded is final.

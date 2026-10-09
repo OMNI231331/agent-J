@@ -5,6 +5,9 @@ import { cancelCheckout, startCheckout, SESSION_TTL_MS } from "../lib/commerce/c
 import { InventoryStore, K } from "../lib/commerce/store.ts";
 import { signStripePayload, verifyStripeSignature, type CheckoutSession, type StripeApi } from "../lib/commerce/stripe.ts";
 import { validateCart } from "../lib/commerce/validate.ts";
+import { commerceConfig } from "../lib/commerce/config.ts";
+import { clientIp } from "../lib/commerce/client-ip.ts";
+import { cartReducer, sanitizeLines } from "../lib/cart-logic.ts";
 import { handleStripeEvent, type StripeEvent } from "../lib/commerce/webhook.ts";
 import { RespClient, startRedis } from "./redis-harness.ts";
 
@@ -486,5 +489,104 @@ describe("checkout session creation and cancellation", () => {
     assert.equal(await cancelCheckout(r.reservationId, { store, stripe: api }), "noop");
     assert.deepEqual(calls.expired, []);
     assert.equal(await stock(HOODIE), 2);
+  });
+});
+
+// ---------------------------------------------------------------- added after the multi-agent review
+describe("order status can never move backwards", () => {
+  test("a late 'payment failed' event cannot overwrite a paid order", async () => {
+    await store.setStock({ [HOODIE]: 5 });
+    const id = rid();
+    await store.reserve(id, [{ sku: HOODIE, qty: 1 }], FUTURE());
+    await store.attachSession(id, "cs_test_1", findSku(HOODIE)!.product.priceCents);
+    await handleStripeEvent(event("checkout.session.completed", { payment_status: "paid", metadata: { reservation_id: id } }), store);
+    await handleStripeEvent(event("checkout.session.async_payment_failed", { metadata: { reservation_id: id } }), store);
+    assert.equal((await store.getOrder("cs_test_1"))?.status, "paid");
+    assert.equal(await stock(HOODIE), 4, "paid stock must stay deducted");
+  });
+});
+
+describe("order size cap", () => {
+  test("rejects more than 6 items in one order, even across different SKUs", () => {
+    const r = validateCart([{ sku: HOODIE, qty: 3 }, { sku: HOODIE_L, qty: 3 }, { sku: TEE, qty: 1 }], { liveMode: false });
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.match(r.error, /limited to 6/);
+  });
+  test("accepts exactly 6", () => {
+    assert.equal(validateCart([{ sku: HOODIE, qty: 3 }, { sku: HOODIE_L, qty: 3 }], { liveMode: false }).ok, true);
+  });
+});
+
+describe("live-payment gate (commerceConfig)", () => {
+  const msg = (r: ReturnType<typeof commerceConfig>) => (r.ok ? "OK" : r.error);
+  test("no key, or a malformed key, means checkout is not connected", () => {
+    assert.match(msg(commerceConfig({}, "preview")), /isn't connected/);
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "nonsense" }, "preview")), /isn't connected/);
+  });
+  test("a test key passes the payment gate (then needs inventory)", () => {
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_test_x" }, "preview")), /Inventory isn't connected/);
+  });
+  test("a LIVE key is refused unless BOTH ALLOW_LIVE_PAYMENTS=true AND live mode", () => {
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_live_x" }, "live")), /Live payments are not enabled/);
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_live_x", ALLOW_LIVE_PAYMENTS: "true" }, "preview")), /Live payments are not enabled/);
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_live_x", ALLOW_LIVE_PAYMENTS: "false" }, "live")), /Live payments are not enabled/);
+    // both gates open: the live gate passes and the next check (inventory) is what's reported
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_live_x", ALLOW_LIVE_PAYMENTS: "true" }, "live")), /Inventory isn't connected/);
+  });
+  test("restricted live keys are gated the same way", () => {
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "rk_live_x" }, "preview")), /Live payments are not enabled/);
+  });
+});
+
+describe("client IP source", () => {
+  const h = (o: Record<string, string>) => ({ get: (k: string) => o[k.toLowerCase()] ?? null });
+  test("prefers the platform-set headers over a spoofable x-forwarded-for", () => {
+    assert.equal(clientIp(h({ "x-vercel-forwarded-for": "1.1.1.1", "x-forwarded-for": "6.6.6.6" })), "1.1.1.1");
+    assert.equal(clientIp(h({ "x-real-ip": "2.2.2.2", "x-forwarded-for": "6.6.6.6" })), "2.2.2.2");
+  });
+  test("falls back to the first x-forwarded-for hop, then 'unknown'", () => {
+    assert.equal(clientIp(h({ "x-forwarded-for": "3.3.3.3, 4.4.4.4" })), "3.3.3.3");
+    assert.equal(clientIp(h({})), "unknown");
+  });
+});
+
+describe("bag logic (restoring a saved bag and adding items)", () => {
+  const units = (l: { qty: number }[]) => l.reduce((n, x) => n + x.qty, 0);
+  test("duplicate SKUs in storage are merged and re-capped at 3", () => {
+    assert.deepEqual(sanitizeLines([{ sku: HOODIE, qty: 3 }, { sku: HOODIE, qty: 3 }]), [{ sku: HOODIE, qty: 3 }]);
+  });
+  test("unknown SKUs, the concept product and junk entries are dropped", () => {
+    const out = sanitizeLines([{ sku: "NOPE", qty: 1 }, { sku: CONCEPT, qty: 1 }, null, 7, { sku: HOODIE, qty: -1 }, { sku: HOODIE, qty: 1.5 }, { sku: HOODIE, qty: "2" }, { sku: HOODIE, qty: 1 }]);
+    assert.deepEqual(out, [{ sku: HOODIE, qty: 1 }]);
+  });
+  test("a non-array is an empty bag", () => assert.deepEqual(sanitizeLines({ sku: HOODIE }), []));
+  test("a 10,000-line saved bag is bounded to 6 units and 20 lines, quickly", () => {
+    const skus = products.filter((p) => p.purchasable).flatMap((p) => p.variants.map((v) => v.sku));
+    const huge = Array.from({ length: 10000 }, (_, i) => ({ sku: skus[i % skus.length], qty: 3 }));
+    const t0 = Date.now();
+    const out = sanitizeLines(huge);
+    assert.ok(Date.now() - t0 < 200, "must not take long");
+    assert.ok(out.length <= 20 && units(out) <= 6);
+  });
+  test("adding never exceeds 3 per item or 6 per order", () => {
+    let bag = cartReducer([], { type: "add", sku: HOODIE, qty: 10 });
+    assert.deepEqual(bag, [{ sku: HOODIE, qty: 3 }]);
+    bag = cartReducer(bag, { type: "add", sku: HOODIE_L, qty: 3 });
+    bag = cartReducer(bag, { type: "add", sku: TEE, qty: 1 }); // order already has 6
+    assert.equal(units(bag), 6);
+    assert.equal(bag.length, 2);
+  });
+  test("raising a quantity respects the order cap and the concept product can't be added", () => {
+    let bag = cartReducer([], { type: "add", sku: HOODIE, qty: 3 });
+    bag = cartReducer(bag, { type: "add", sku: TEE, qty: 2 });
+    bag = cartReducer(bag, { type: "setQty", sku: TEE, qty: 3 });
+    bag = cartReducer(bag, { type: "setQty", sku: TEE, qty: 99 });
+    assert.equal(units(bag), 6);
+    assert.deepEqual(cartReducer(bag, { type: "add", sku: CONCEPT }), bag);
+  });
+  test("setQty to 0 or garbage removes the line", () => {
+    const bag = cartReducer([], { type: "add", sku: HOODIE, qty: 2 });
+    assert.deepEqual(cartReducer(bag, { type: "setQty", sku: HOODIE, qty: 0 }), []);
+    assert.deepEqual(cartReducer(bag, { type: "setQty", sku: HOODIE, qty: Number.NaN }), []);
   });
 });

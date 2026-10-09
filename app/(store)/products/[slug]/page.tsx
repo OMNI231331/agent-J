@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = getProduct((await params).slug);
   if (!p) return {};
-  return { title: p.name, description: p.description, openGraph: { title: `${p.name} — LSW`, description: p.tagline } };
+  const description = p.description.length > 155 ? `${p.description.slice(0, 152).trimEnd()}…` : p.description;
+  return { title: p.name, description, openGraph: { title: `${p.name} — LSW`, description: p.tagline } };
 }
 
 export default async function ProductPage({ params }: Props) {

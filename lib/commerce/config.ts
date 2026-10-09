@@ -11,13 +11,13 @@ export type CommerceConfig =
  * Single gate for anything that takes money. Live keys are refused unless the owner has
  * explicitly opted in with ALLOW_LIVE_PAYMENTS=true AND the site is in live mode.
  */
-export function commerceConfig(): CommerceConfig {
-  const key = process.env.STRIPE_SECRET_KEY;
-  const mode = stripeMode(key);
-  if (!key || mode === "invalid") return { ok: false, error: "Checkout isn't connected yet. The store owner needs to configure Stripe (see docs/CHECKOUT.md)." };
-  if (mode === "live" && (process.env.ALLOW_LIVE_PAYMENTS !== "true" || site.mode !== "live"))
+export function commerceConfig(env: Record<string, string | undefined> = process.env, mode: "preview" | "live" = site.mode): CommerceConfig {
+  const key = env.STRIPE_SECRET_KEY;
+  const keyMode = stripeMode(key);
+  if (!key || keyMode === "invalid") return { ok: false, error: "Checkout isn't connected yet. The store owner needs to configure Stripe (see docs/CHECKOUT.md)." };
+  if (stripeMode(key) === "live" && (env.ALLOW_LIVE_PAYMENTS !== "true" || mode !== "live"))
     return { ok: false, error: "Live payments are not enabled for this store yet." };
   const store = getStore();
   if (!store) return { ok: false, error: "Inventory isn't connected yet. The store owner needs to configure Upstash Redis (see docs/CHECKOUT.md)." };
-  return { ok: true, store, stripe: stripeClient(key), mode };
+  return { ok: true, store, stripe: stripeClient(key), mode: keyMode };
 }

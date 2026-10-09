@@ -6,7 +6,7 @@ import { products, type Category } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Shop", description: "Shop LSW DROP 001 — heavyweight hoodies, oversized tees and headwear." };
+export const metadata: Metadata = { title: "Shop", description: "LSW DROP 001: hoodies, tees and headwear in development. Prices shown are drafts." };
 
 const categories: ("All" | Category)[] = ["All", "Hoodies", "Tees", "Headwear"];
 const sorts = { featured: "Featured", "price-asc": "Price: low to high", "price-desc": "Price: high to low" } as const;

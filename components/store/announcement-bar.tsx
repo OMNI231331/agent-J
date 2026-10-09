@@ -8,7 +8,7 @@ export function AnnouncementBar() {
         <Link className="hover:text-bone" href="/#early-access">
           LSW DROP 001 — JOIN THE EARLY-ACCESS LIST
         </Link>
-        {site.mode === "preview" && <span className="hidden sm:inline"> · PREVIEW — PRICES &amp; AVAILABILITY ARE DRAFT</span>}
+        {site.mode === "preview" && <span className="block sm:inline"> <span className="hidden sm:inline">· </span>PREVIEW — PRICES &amp; AVAILABILITY ARE DRAFT</span>}
       </p>
     </div>
   );

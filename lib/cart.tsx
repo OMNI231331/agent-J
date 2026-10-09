@@ -1,47 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
-import { findSku, MAX_PER_LINE } from "./catalog";
+import { findSku } from "./catalog";
+import { cartReducer, type CartLine } from "./cart-logic";
 
-/** The cart only stores SKU + quantity. Name, price, color and size are always derived from the catalog. */
-export type CartLine = { sku: string; qty: number };
-type Action =
-  | { type: "add"; sku: string; qty?: number }
-  | { type: "setQty"; sku: string; qty: number }
-  | { type: "remove"; sku: string }
-  | { type: "hydrate"; lines: CartLine[] }
-  | { type: "clear" };
+export type { CartLine } from "./cart-logic";
 
 const KEY = "lsw.cart.v1";
-
-function maxFor(sku: string) {
-  // Live stock is only known to the server; it is re-checked atomically at checkout.
-  const hit = findSku(sku);
-  return hit && hit.product.purchasable ? MAX_PER_LINE : 0;
-}
-
-function reducer(lines: CartLine[], a: Action): CartLine[] {
-  switch (a.type) {
-    case "hydrate":
-      return a.lines.filter((l) => maxFor(l.sku) > 0).map((l) => ({ ...l, qty: Math.min(l.qty, maxFor(l.sku)) }));
-    case "add": {
-      const max = maxFor(a.sku);
-      if (!max) return lines;
-      const existing = lines.find((l) => l.sku === a.sku);
-      const qty = Math.min(max, (existing?.qty ?? 0) + (a.qty ?? 1));
-      return existing ? lines.map((l) => (l.sku === a.sku ? { ...l, qty } : l)) : [...lines, { sku: a.sku, qty }];
-    }
-    case "setQty": {
-      const max = maxFor(a.sku);
-      if (a.qty <= 0 || !max) return lines.filter((l) => l.sku !== a.sku);
-      return lines.map((l) => (l.sku === a.sku ? { ...l, qty: Math.min(a.qty, max) } : l));
-    }
-    case "remove":
-      return lines.filter((l) => l.sku !== a.sku);
-    case "clear":
-      return [];
-  }
-}
 
 type Ctx = {
   lines: CartLine[];
@@ -57,7 +22,7 @@ type Ctx = {
 const CartContext = createContext<Ctx | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [lines, dispatch] = useReducer(reducer, []);
+  const [lines, dispatch] = useReducer(cartReducer, []);
   const [open, setOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -66,12 +31,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          dispatch({
-            type: "hydrate",
-            lines: parsed.filter((l) => l && typeof l.sku === "string" && Number.isInteger(l.qty) && l.qty > 0),
-          });
-        }
+        // Anything in storage is untrusted: the reducer merges duplicates and enforces every limit.
+        if (Array.isArray(parsed)) dispatch({ type: "hydrate", lines: parsed as CartLine[] });
       }
     } catch {
       /* storage unavailable or corrupt — start with an empty cart */

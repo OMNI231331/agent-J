@@ -116,7 +116,7 @@ export const products: Product[] = [
     purchasable: true,
     level: 1,
     description:
-      "A relaxed, boxy heavyweight tee with a restrained front mark and a vintage-treated back print. No crystals on this one — the lowest-risk, lowest-price way into LSW.",
+      "A relaxed, boxy tee with a restrained front mark and a vintage-treated back print. No crystals on this one — the lowest-risk, lowest-price way into LSW.",
     fit: "Oversized and boxy with a dropped shoulder. True size for the designed fit.",
     fabric: {
       summary: "Heavyweight cotton jersey, target 220–260 GSM (design target — unconfirmed).",
@@ -191,3 +191,6 @@ export const allSkus = () => [...bySku.keys()];
 
 /** Max units of one variant per order (limited-drop guard; stock is checked separately). */
 export const MAX_PER_LINE = 3;
+/** Total units in one order, and the most distinct lines a bag may hold. Enforced in the bag AND on the server. */
+export const MAX_UNITS_PER_ORDER = 6;
+export const MAX_CART_LINES = 20;

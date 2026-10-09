@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PolicyPage } from "@/components/store/policy-page";
 
-export const metadata: Metadata = { title: "Shipping & Returns" };
+export const metadata: Metadata = { title: "Shipping & Returns", description: "Draft shipping and returns information for LSW. Final terms will be published before orders open." };
 
 export default function Page() {
   return (
