@@ -6,7 +6,7 @@ How it works
 - **Reservation hold:** 31 min (Stripe's minimum session life) + 10 min grace. After payment, the Stripe webhook turns the reservation into a permanent deduction and records the order.
 - **Webhook** (`POST /api/stripe/webhook`): signature-verified (HMAC-SHA256, 5-min replay window), idempotent (duplicate / racing deliveries change nothing, out-of-order events can't move an order backwards).
 - **Failure paths:** `checkout.session.expired`, `async_payment_failed`, cancel button → stock released. Customer pressing back → `/checkout/cancelled` expires the Stripe session and releases stock. Daily cron + a sweep before every new checkout release any hold that was missed.
-- **Hoarding guard:** max 8 checkout starts per IP per 10 minutes (HTTP 429 after that), plus per-item limit of 3. It slows scripted hoarding; it doesn't stop a determined attacker with many IPs.
+- **Hoarding guard:** max 8 checkout starts per IP per 10 minutes (HTTP 429 after that; invalid carts don't count), at most 3 of one item and 6 items per order. The IP comes from Vercel's trusted `x-vercel-forwarded-for` header. Sign-ups are limited to 5 per IP per 10 minutes. It slows scripted hoarding; it doesn't stop a determined attacker with many IPs.
 - **Late payment edge case:** if a payment lands after its hold was released and the stock was resold, the customer is **refunded in full automatically** (never oversold) and the order is marked `refunded`. If Stripe's refund call fails, the webhook answers 500 so Stripe retries; each retry reuses the same Stripe idempotency key, so the customer is refunded exactly once. Only if Stripe gives no payment id is the order left as `needs_attention` for a manual refund (`pnpm inventory orders`).
 - **Amount check:** the subtotal Stripe charged must equal the subtotal reserved at catalog prices; if not, the order is flagged `needs_attention` for review before shipping.
 
@@ -25,7 +25,7 @@ Vercel → your project → **Settings → Environment Variables**. Add each for
 | `STRIPE_SECRET_KEY` | **`sk_test_…`** from Stripe test mode (Developers → API keys) |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` from step 3 |
 | `CRON_SECRET` | a long random string (e.g. `openssl rand -hex 32`) |
-| `NEXT_PUBLIC_SITE_URL` | your site URL, e.g. `https://yourdomain.com` |
+| `NEXT_PUBLIC_SITE_URL` | your site URL, e.g. `https://yourdomain.com` (**required in live mode**; checkout refuses to start without it) |
 | `NEXT_PUBLIC_STORE_MODE` | `preview` for now |
 | `ALLOW_LIVE_PAYMENTS` | `false` |
 | optional: `STRIPE_SHIPPING_RATE_ID`, `STRIPE_AUTOMATIC_TAX` | see `.env.example` |
@@ -42,7 +42,8 @@ Local development: `stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 ## 4. Put stock in Redis
 ```bash
-vercel env pull .env.local          # or create .env.local with the two Upstash values
+npm i -g vercel && vercel link      # one-time: install the Vercel CLI and link this folder to the project
+vercel env pull .env.local --environment=preview   # variables marked Sensitive are NOT pulled; for those, paste UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN into .env.local by hand
 pnpm inventory show                 # every SKU; "not stocked" until you set it
 pnpm inventory seed 3 --yes         # TEST ONLY: 3 of every SKU (refuses if anything is already stocked)
 pnpm inventory set LSW001-HOOD-WASHED-BLACK-M 12     # absolute count — only when no checkouts are open
@@ -56,14 +57,14 @@ Use the **real production counts** for each SKU only after the garments exist. D
 3. You land on **Order confirmed**. Then check:
    - `pnpm inventory show` → that SKU is down by what you bought.
    - `pnpm inventory orders` → a `paid` order with the amount and email.
-   - Stripe → Developers → Webhooks → the endpoint → all four recent deliveries show **200**.
+   - Stripe → Developers → Webhooks → the endpoint → the `checkout.session.completed` delivery shows **200**. (A normal card payment sends only that event.)
 4. Failure paths: card `4000 0000 0000 0002` (declined — stay on Stripe's page, stock stays held until it expires or you press back); press **← back** on Stripe's page → "Checkout cancelled" and stock returns; in Stripe's webhook page use **Resend** on a delivered event → still one order, stock unchanged.
 5. Oversell check: set a SKU to `1`, open checkout in two browsers, start checkout in both — the second gets "sold out".
 
 ## 6. Automated tests
 ```bash
 pnpm typecheck
-pnpm test        # needs redis-server installed locally; 52 tests on real Redis: stock limits, concurrent buyers, duplicate/racing webhooks, expired/failed payments, automatic refunds and refund retries, signatures, validation
+pnpm test        # needs redis-server installed locally; 61 tests on real Redis: stock limits, concurrent buyers, duplicate/racing webhooks, expired/failed payments, automatic refunds and refund retries, signatures, validation
 pnpm build && pnpm smoke   # full purchase against the built app (real Upstash client + fake Stripe)
 ```
 CI (`.github/workflows/test.yml`) runs all of these on every pull request.

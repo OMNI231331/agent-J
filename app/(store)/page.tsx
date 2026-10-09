@@ -62,7 +62,7 @@ export default async function Home() {
           <div>
             <p className="display text-3xl sm:text-5xl lg:text-6xl">Built around faith, discipline, and purpose.</p>
             <p className="mt-8 max-w-2xl text-lg leading-relaxed text-silver">
-              Every LSW piece is designed to be more than clothing — a reminder of who you are, what you stand for, and what you&apos;re working toward. Released in limited drops.
+              Every LSW piece is designed to be more than clothing — a reminder of who you are, what you stand for, and what you&apos;re working toward. Planned as limited drops.
             </p>
             <Link className="eyebrow mt-8 inline-block underline underline-offset-4 hover:text-bone" href="/our-story">Read our story</Link>
           </div>
@@ -99,7 +99,7 @@ export default async function Home() {
             <h2 className="display mt-3 text-4xl sm:text-6xl">Be first to know.</h2>
           </div>
           <div>
-            <p className="max-w-md text-silver">Join the list and you&apos;ll get first notice when DROP 001 opens, product reveals as they&apos;re finished, and news of any early-access window once one is set. No spam — unsubscribe any time.</p>
+            <p className="max-w-md text-silver">Join the list and you&apos;ll get first notice when DROP 001 opens, product reveals as they&apos;re finished, and news of any early-access window once one is set. No spam.</p>
             <div className="mt-6 max-w-md"><NewsletterForm /></div>
           </div>
         </div>

@@ -5,6 +5,8 @@ import { cancelCheckout, startCheckout, SESSION_TTL_MS } from "../lib/commerce/c
 import { InventoryStore, K } from "../lib/commerce/store.ts";
 import { signStripePayload, verifyStripeSignature, type CheckoutSession, type StripeApi } from "../lib/commerce/stripe.ts";
 import { validateCart } from "../lib/commerce/validate.ts";
+import { commerceConfig } from "../lib/commerce/config.ts";
+import { clientIp } from "../lib/commerce/client-ip.ts";
 import { handleStripeEvent, type StripeEvent } from "../lib/commerce/webhook.ts";
 import { RespClient, startRedis } from "./redis-harness.ts";
 
@@ -483,5 +485,63 @@ describe("checkout session creation and cancellation", () => {
     assert.equal(await cancelCheckout(r.reservationId, { store, stripe: api }), "noop");
     assert.deepEqual(calls.expired, []);
     assert.equal(await stock(HOODIE), 2);
+  });
+});
+
+// ---------------------------------------------------------------- added after the multi-agent review
+describe("order status can never move backwards", () => {
+  test("a late 'payment failed' event cannot overwrite a paid order", async () => {
+    await store.setStock({ [HOODIE]: 5 });
+    const id = rid();
+    await store.reserve(id, [{ sku: HOODIE, qty: 1 }], FUTURE());
+    await store.attachSession(id, "cs_test_1", findSku(HOODIE)!.product.priceCents);
+    await handleStripeEvent(event("checkout.session.completed", { payment_status: "paid", metadata: { reservation_id: id } }), store);
+    await handleStripeEvent(event("checkout.session.async_payment_failed", { metadata: { reservation_id: id } }), store);
+    assert.equal((await store.getOrder("cs_test_1"))?.status, "paid");
+    assert.equal(await stock(HOODIE), 4, "paid stock must stay deducted");
+  });
+});
+
+describe("order size cap", () => {
+  test("rejects more than 6 items in one order, even across different SKUs", () => {
+    const r = validateCart([{ sku: HOODIE, qty: 3 }, { sku: HOODIE_L, qty: 3 }, { sku: TEE, qty: 1 }], { liveMode: false });
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.match(r.error, /limited to 6/);
+  });
+  test("accepts exactly 6", () => {
+    assert.equal(validateCart([{ sku: HOODIE, qty: 3 }, { sku: HOODIE_L, qty: 3 }], { liveMode: false }).ok, true);
+  });
+});
+
+describe("live-payment gate (commerceConfig)", () => {
+  const msg = (r: ReturnType<typeof commerceConfig>) => (r.ok ? "OK" : r.error);
+  test("no key, or a malformed key, means checkout is not connected", () => {
+    assert.match(msg(commerceConfig({}, "preview")), /isn't connected/);
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "nonsense" }, "preview")), /isn't connected/);
+  });
+  test("a test key passes the payment gate (then needs inventory)", () => {
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_test_x" }, "preview")), /Inventory isn't connected/);
+  });
+  test("a LIVE key is refused unless BOTH ALLOW_LIVE_PAYMENTS=true AND live mode", () => {
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_live_x" }, "live")), /Live payments are not enabled/);
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_live_x", ALLOW_LIVE_PAYMENTS: "true" }, "preview")), /Live payments are not enabled/);
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_live_x", ALLOW_LIVE_PAYMENTS: "false" }, "live")), /Live payments are not enabled/);
+    // both gates open: the live gate passes and the next check (inventory) is what's reported
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "sk_live_x", ALLOW_LIVE_PAYMENTS: "true" }, "live")), /Inventory isn't connected/);
+  });
+  test("restricted live keys are gated the same way", () => {
+    assert.match(msg(commerceConfig({ STRIPE_SECRET_KEY: "rk_live_x" }, "preview")), /Live payments are not enabled/);
+  });
+});
+
+describe("client IP source", () => {
+  const h = (o: Record<string, string>) => ({ get: (k: string) => o[k.toLowerCase()] ?? null });
+  test("prefers the platform-set headers over a spoofable x-forwarded-for", () => {
+    assert.equal(clientIp(h({ "x-vercel-forwarded-for": "1.1.1.1", "x-forwarded-for": "6.6.6.6" })), "1.1.1.1");
+    assert.equal(clientIp(h({ "x-real-ip": "2.2.2.2", "x-forwarded-for": "6.6.6.6" })), "2.2.2.2");
+  });
+  test("falls back to the first x-forwarded-for hop, then 'unknown'", () => {
+    assert.equal(clientIp(h({ "x-forwarded-for": "3.3.3.3, 4.4.4.4" })), "3.3.3.3");
+    assert.equal(clientIp(h({})), "unknown");
   });
 });

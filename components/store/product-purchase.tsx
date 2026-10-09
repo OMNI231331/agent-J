@@ -121,7 +121,7 @@ export function ProductPurchase({ product, stock }: { product: Product; stock: S
             <button aria-disabled={size ? !canBuy : false} className="btn mt-3 w-full" disabled={!!size && !canBuy} onClick={addToBag} type="button">
               {!size ? "Select a size" : canBuy ? `Add to bag — ${money(product.priceCents)}` : "Unavailable"}
             </button>
-            <p className="mt-3 text-xs text-steel">Limit {MAX_PER_LINE} per item. Limited-run releases may not restock.</p>
+            <p className="mt-3 text-xs text-steel">Limit {MAX_PER_LINE} per item. Run size and restock plans to be confirmed.</p>
           </>
         )}
 

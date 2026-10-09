@@ -9,7 +9,7 @@ import { site } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Drop 001", description: "LSW DROP 001 — the first limited collection." };
+export const metadata: Metadata = { title: "Drop 001", description: "LSW DROP 001 — the first collection, currently in development." };
 
 export default async function DropPage() {
   const stock = await getStockMap();
@@ -20,7 +20,7 @@ export default async function DropPage() {
         <div className="container-lsw py-20 sm:py-32">
           <p className="eyebrow">LSW</p>
           <h1 className="display mt-4 text-[clamp(3.5rem,14vw,11rem)]">Drop 001</h1>
-          <p className="mt-6 max-w-xl text-lg text-silver">The first collection sets the standard: three focused pieces plus one concept, produced in limited quantity — not stocked endlessly.</p>
+          <p className="mt-6 max-w-xl text-lg text-silver">The first collection sets the standard: three focused pieces plus one concept, planned as a limited run, with the quantity to be confirmed — not stocked endlessly.</p>
           <p className="eyebrow mt-6 !text-bone">
             {site.launchDate ? `Opens ${new Date(site.launchDate).toLocaleDateString("en-US", { dateStyle: "long" })}` : "Release date to be announced — join the early-access list"}
           </p>

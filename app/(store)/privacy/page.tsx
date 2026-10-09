@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PolicyPage } from "@/components/store/policy-page";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = { title: "Privacy Policy", description: "Draft privacy information for LSW. A full policy will be published before launch." };
 
 export default function Page() {
   return (

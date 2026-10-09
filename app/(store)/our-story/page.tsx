@@ -50,7 +50,7 @@ export default function StoryPage() {
         <div className="container-lsw grid gap-12 py-20 lg:grid-cols-[1fr_2fr]">
           <p className="eyebrow">Why limited</p>
           <div className="max-w-2xl space-y-6 text-lg leading-relaxed text-silver">
-            <p>We release in drops. Small, deliberate runs let us control quality and avoid piling up inventory nobody asked for. When a drop is gone, it may not return.</p>
+            <p>We plan to release in drops. Small, deliberate runs let us control quality and avoid piling up inventory nobody asked for. How many pieces we make will be stated once it is decided.</p>
             <p>If a piece is ever numbered, the number will correspond to a real, tracked production run.</p>
             <Link className="btn mt-4" href="/drop-001">See Drop 001</Link>
           </div>

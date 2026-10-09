@@ -5,6 +5,8 @@ export type CartInput = { sku?: unknown; qty?: unknown; priceCents?: unknown; co
 export type ValidationResult = { ok: true; lines: Line[] } | { ok: false; status: 400 | 409; error: string };
 
 export const MAX_LINES = 20;
+/** Total units in one order. Keeps a single checkout from reserving a whole limited drop. */
+export const MAX_UNITS_PER_ORDER = 6;
 
 /**
  * Server-side validation of a cart. The client only proposes SKU + quantity; price, product,
@@ -33,5 +35,7 @@ export function validateCart(input: unknown, opts: { liveMode: boolean }): Valid
     if (total > MAX_PER_LINE) return { ok: false, status: 409, error: `Limit ${MAX_PER_LINE} per item for ${product.name} (${variant.size}).` };
     totals.set(sku, total);
   }
+  const units = [...totals.values()].reduce((a, b) => a + b, 0);
+  if (units > MAX_UNITS_PER_ORDER) return { ok: false, status: 409, error: `Orders are limited to ${MAX_UNITS_PER_ORDER} items.` };
   return { ok: true, lines: [...totals].map(([sku, qty]) => ({ sku, qty })) };
 }

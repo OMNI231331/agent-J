@@ -116,7 +116,7 @@ export const products: Product[] = [
     purchasable: true,
     level: 1,
     description:
-      "A relaxed, boxy heavyweight tee with a restrained front mark and a vintage-treated back print. No crystals on this one — the lowest-risk, lowest-price way into LSW.",
+      "A relaxed, boxy tee with a restrained front mark and a vintage-treated back print. No crystals on this one — the lowest-risk, lowest-price way into LSW.",
     fit: "Oversized and boxy with a dropped shoulder. True size for the designed fit.",
     fabric: {
       summary: "Heavyweight cotton jersey, target 220–260 GSM (design target — unconfirmed).",

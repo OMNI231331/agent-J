@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PolicyPage } from "@/components/store/policy-page";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+export const metadata: Metadata = { title: "Terms of Service", description: "Draft terms of service for LSW. Final terms will be published before launch." };
 
 export default function Page() {
   return (
