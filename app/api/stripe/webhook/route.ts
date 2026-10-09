@@ -1,16 +1,35 @@
 import { NextResponse } from "next/server";
-import { getStripe } from "@/lib/checkout/stripe";
-import { processWebhook } from "@/lib/checkout/webhook";
-import { getStore } from "@/lib/inventory";
+import { commerceConfig } from "@/lib/commerce/config";
+import { verifyStripeSignature } from "@/lib/commerce/stripe";
+import { handleStripeEvent, type StripeEvent } from "@/lib/commerce/webhook";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-// Stripe calls this for every payment event. The signature is verified against the RAW body, so do not parse it first.
+/**
+ * Stripe → LSW. The raw body is verified against STRIPE_WEBHOOK_SECRET before anything is parsed.
+ * 400 = bad signature (Stripe won't retry usefully); 500 = our infrastructure failed (Stripe retries).
+ */
 export async function POST(req: Request) {
-  const store = getStore();
-  const stripe = getStripe();
-  if (!store || !stripe) return NextResponse.json({ error: "Not configured." }, { status: 503 }); // Stripe retries on 5xx
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const cfg = commerceConfig();
+  if (!secret || !cfg.ok) return NextResponse.json({ error: "not configured" }, { status: 503 });
+
   const raw = await req.text();
-  const result = await processWebhook({ raw, signature: req.headers.get("stripe-signature"), secret: process.env.STRIPE_WEBHOOK_SECRET, store, stripe });
-  return NextResponse.json(result.body, { status: result.status });
+  if (!verifyStripeSignature(raw, req.headers.get("stripe-signature"), secret)) {
+    return NextResponse.json({ error: "invalid signature" }, { status: 400 });
+  }
+  let event: StripeEvent;
+  try {
+    event = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ error: "invalid payload" }, { status: 400 });
+  }
+  try {
+    const result = await handleStripeEvent(event, cfg.store, { refunds: cfg.stripe });
+    return NextResponse.json({ received: true, ...result });
+  } catch (e) {
+    console.error("webhook: processing failed", event.id, event.type, e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: "processing failed" }, { status: 500 });
+  }
 }

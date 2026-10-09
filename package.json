@@ -1,6 +1,7 @@
 {
   "name": "agent",
   "version": "0.0.0",
+  "packageManager": "pnpm@10.28.0",
   "type": "module",
   "imports": {
     "#*": "./agent/*",
@@ -16,7 +17,9 @@
     "build:eve": "eve build",
     "dev:eve": "eve dev",
     "start:eve": "eve start",
-    "test": "vitest run"
+    "test": "node --test --test-concurrency=1 tests/*.test.ts",
+    "inventory": "node --env-file-if-exists=.env.local scripts/inventory.ts",
+    "smoke": "node scripts/smoke-test.ts"
   },
   "dependencies": {
     "@radix-ui/react-use-controllable-state": "1.2.2",
@@ -28,7 +31,7 @@
     "@streamdown/math": "1.0.2",
     "@streamdown/mermaid": "1.0.2",
     "@tailwindcss/postcss": "4.3.0",
-    "@upstash/redis": "^1.39.0",
+    "@upstash/redis": "1.38.2",
     "@vercel/connect": "0.4.2",
     "ai": "7.0.112",
     "better-auth": "1.6.26",
@@ -45,7 +48,6 @@
     "react-dom": "19.2.6",
     "shiki": "3.23.0",
     "streamdown": "2.5.0",
-    "stripe": "^23.0.0",
     "tailwind-merge": "3.6.0",
     "tailwindcss": "4.3.0",
     "use-stick-to-bottom": "1.1.4",
@@ -55,9 +57,7 @@
     "@types/node": "24.13.2",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
-    "ioredis": "^6.0.0",
-    "typescript": "6.0.3",
-    "vitest": "^5.0.3"
+    "typescript": "6.0.3"
   },
   "engines": {
     "node": "24.x"

@@ -1,35 +1,11 @@
-# agent
+# LSW — Premium limited-edition streetwear
 
-This is an [eve](https://eve.dev) agent bootstrapped with [`eve init`](https://eve.dev/docs/reference/cli#eve-init).
+Next.js 16 / React 19 / Tailwind 4 storefront for **LSW**, plus the existing eve assistant at `/assistant`.
 
-## Getting started
+- **Storefront:** `app/(store)/` · components `components/store/` · data `lib/catalog.ts` · cart `lib/cart.tsx` · inventory rules `lib/inventory.ts`
+- **Commerce:** `lib/commerce/` (atomic Redis inventory, Stripe checkout, webhook) · `app/api/checkout`, `app/api/stripe/webhook`, `app/api/cron/release-reservations` · tests in `tests/` · setup in `docs/CHECKOUT.md`
+- **Email:** `app/api/subscribe` (Resend Audience)
+- **Logo system:** `lib/brand.ts` → `public/brand/*.svg` via `scripts/build-brand-assets.ts`; reference page `/brand`
+- **Docs:** `docs/BRAND.md`, `PACKAGING.md`, `BUSINESS.md`, `LAUNCH.md` (setup + what's still required), `ASSETS.md`
 
-First, run the development server:
-
-```bash
-eve dev
-```
-
-The development TUI opens an interactive session where you can send messages to your agent.
-
-Start by editing `agent/instructions.md` to define the agent's identity, purpose, tone, and response guidelines. Configure its model and runtime behavior in `agent/agent.ts`.
-
-Add capabilities under `agent/`, including tools, connections, channels, skills, subagents, and schedules. eve reloads your changes as you work.
-
-## Learn more
-
-To learn more about eve, explore these resources:
-
-- [eve documentation](https://eve.dev/docs) — learn about eve's features and authoring APIs.
-- [Build an Agent tutorial](https://eve.dev/docs/tutorial/first-agent) — build and deploy an agent step by step.
-- [eve on GitHub](https://github.com/vercel/eve) — view the source and contribute.
-
-## Deploy on Vercel
-
-Deploy your agent to [Vercel](https://vercel.com) from the project root:
-
-```bash
-eve deploy
-```
-
-`eve deploy` links a Vercel project if needed and deploys the agent to production. See the [eve deployment documentation](https://eve.dev/docs/guides/deployment/vercel) for authentication, environment variables, and deployment options.
+Start with **`docs/LAUNCH.md`**. The store is not yet configured to take real payments.

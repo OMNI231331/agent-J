@@ -1,28 +1,34 @@
 import { NextResponse } from "next/server";
-import { clientIdFromRequest, createCheckout } from "@/lib/checkout/create";
-import { getSiteUrl, getStripe, keyProblem } from "@/lib/checkout/stripe";
-import { getStore } from "@/lib/inventory";
+import { startCheckout } from "@/lib/commerce/checkout";
+import { commerceConfig } from "@/lib/commerce/config";
+import { site } from "@/lib/site";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-// Starts a Stripe Checkout Session after reserving stock. Everything is validated against lib/lsw.ts on the server.
+/** Reserves stock atomically in Redis, then creates a Stripe Checkout Session. The client sends only SKU + qty (+ displayed price). */
 export async function POST(req: Request) {
-  let body: { items?: unknown };
+  const cfg = commerceConfig();
+  if (!cfg.ok) return NextResponse.json({ error: cfg.error }, { status: 503 });
+  // Stops scripts from reserving (hoarding) a limited drop: max 8 checkout starts per IP per 10 minutes.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  if (!(await cfg.store.allow(`checkout:${ip}`, 8, 600)))
+    return NextResponse.json({ error: "Too many checkout attempts. Please wait a few minutes and try again." }, { status: 429 });
+  const body = (await req.json().catch(() => null)) as { lines?: unknown } | null;
+  if (!body) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+    const result = await startCheckout(body.lines, {
+      store: cfg.store,
+      stripe: cfg.stripe,
+      origin: process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin,
+      liveMode: site.mode === "live",
+      shippingRateId: process.env.STRIPE_SHIPPING_RATE_ID || undefined,
+      automaticTax: process.env.STRIPE_AUTOMATIC_TAX === "true",
+    });
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json({ url: result.url });
+  } catch (e) {
+    console.error("checkout: unexpected error", e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: "We couldn't start checkout. Please try again." }, { status: 500 });
   }
-
-  const store = getStore();
-  const stripe = getStripe();
-  const siteUrl = getSiteUrl();
-  if (!store || !stripe || !siteUrl) {
-    // Shoppers get a plain message. The technical reason goes to the server log for the owner.
-    console.error("[checkout] not available:", keyProblem(process.env.STRIPE_SECRET_KEY) ?? (!store ? "Redis is not configured." : "SITE_URL is not set."));
-    return NextResponse.json({ error: "Checkout isn't open yet. Join early access to hear when it is." }, { status: 503 });
-  }
-
-  const result = await createCheckout({ items: body.items, clientId: clientIdFromRequest(req) }, { store, stripe, siteUrl });
-  return NextResponse.json(result.body, { status: result.status });
 }

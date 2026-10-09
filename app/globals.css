@@ -26,6 +26,18 @@
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+
+  /* ---- LSW design system tokens ---- */
+  --font-display: var(--font-archivo), "Arial Narrow", Impact, sans-serif;
+  --color-ink: #0a0a0b;        /* page */
+  --color-coal: #111113;       /* raised surface */
+  --color-graphite: #1a1b1e;   /* cards, inputs */
+  --color-line: #2a2b2f;       /* thin borders */
+  --color-steel: #92959b;      /* secondary text (6.4:1 on ink) */
+  --color-silver: #c9ccd1;     /* metallic accent */
+  --color-bone: #ece9e2;       /* primary text, off-white */
+  --color-alert: #e8a0a0;      /* error text on dark */
+  --breakpoint-xs: 30rem;
 }
 
 :root {
@@ -99,121 +111,59 @@ textarea {
   font: inherit;
 }
 
-/* ---------- LSW storefront: motion, focus and large-display scaling ---------- */
-html {
-  scroll-behavior: smooth;
+/* ================= LSW storefront ================= */
+body:has(.lsw) { background: #0a0a0b; }
+.lsw {
+  min-height: 100dvh;
+  background: var(--color-ink);
+  color: var(--color-bone);
+  font-family: var(--font-sans);
 }
-/* The site is sized in rem, so raising the root size scales the whole layout crisply on 1440p and 4K displays. */
-@media (min-width: 2200px) {
-  html:has(.lsw-site) {
-    font-size: 18px;
-  }
-}
-@media (min-width: 2800px) {
-  html:has(.lsw-site) {
-    font-size: 22px;
-  }
-}
-@media (min-width: 3400px) {
-  html:has(.lsw-site) {
-    font-size: 26px;
-  }
-}
+.lsw ::selection { background: var(--color-silver); color: var(--color-ink); }
+.lsw a, .lsw button, .lsw summary { -webkit-tap-highlight-color: transparent; }
+.lsw :focus-visible { outline: 2px solid var(--color-silver); outline-offset: 3px; }
 
-@keyframes lsw-rise {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
+@layer components {
+  .lsw .display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 112%;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
   }
-  to {
-    opacity: 1;
-    transform: none;
+  .lsw .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-steel);
   }
-}
-@keyframes lsw-fade {
-  from {
-    opacity: 0;
+  .lsw .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .6rem;
+    min-height: 3rem; padding: 0 1.75rem;
+    font-family: var(--font-mono); font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
+    border: 1px solid var(--color-bone); background: var(--color-bone); color: var(--color-ink);
+    transition: background-color .2s, color .2s, border-color .2s, opacity .2s;
+    cursor: pointer;
   }
-  to {
-    opacity: 1;
+  .lsw .btn:hover { background: transparent; color: var(--color-bone); }
+  .lsw .btn-ghost { background: transparent; color: var(--color-bone); border-color: var(--color-line); }
+  .lsw .btn-ghost:hover { border-color: var(--color-silver); background: transparent; }
+  .lsw .btn:disabled, .lsw .btn[aria-disabled="true"] { opacity: .4; cursor: not-allowed; }
+  .lsw .btn:disabled:hover { background: var(--color-bone); color: var(--color-ink); }
+  .lsw .field {
+    width: 100%; min-height: 3rem; padding: 0 1rem;
+    background: var(--color-graphite); color: var(--color-bone);
+    border: 1px solid var(--color-line); border-radius: 0; font-size: 1rem;
   }
+  .lsw .field::placeholder { color: var(--color-steel); }
+  .lsw .field[aria-invalid="true"] { border-color: var(--color-alert); }
+  .lsw .container-lsw { width: 100%; max-width: 88rem; margin-inline: auto; padding-inline: 1rem; }
+  @media (min-width: 48rem) { .lsw .container-lsw { padding-inline: 2rem; } }
+  .lsw .hairline { border-color: var(--color-line); }
+  .lsw .img-frame { background: var(--color-coal); border: 1px solid var(--color-line); overflow: hidden; }
 }
-@keyframes lsw-slide-in {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: none;
-  }
-}
-@keyframes lsw-drop-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.lsw-site ::selection {
-  background: #d9dade;
-  color: #000;
-}
-.lsw-site :focus-visible {
-  outline: 2px solid #d9dade;
-  outline-offset: 3px;
-}
-.lsw-site a,
-.lsw-site button {
-  transition:
-    color 250ms ease,
-    background-color 250ms ease,
-    border-color 250ms ease,
-    opacity 250ms ease,
-    transform 250ms ease;
-}
-
-/* Runs on every page navigation (see app/(site)/template.tsx). */
-.lsw-page {
-  animation: lsw-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-/* Staggered entrance for the hero; set the delay with style={{ "--d": "120ms" }}. */
-.lsw-rise {
-  animation: lsw-rise 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: var(--d, 0ms);
-}
-/* Scroll reveal, pure CSS. Browsers without scroll-driven animations simply show the content. */
-@supports (animation-timeline: view()) {
-  .lsw-reveal {
-    animation: lsw-rise linear both;
-    animation-timeline: view();
-    animation-range: entry 0% entry 40%;
-  }
-}
-
-@media print {
-  .lsw-page,
-  .lsw-rise,
-  .lsw-reveal {
-    animation: none !important;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  .lsw-page,
-  .lsw-rise,
-  .lsw-reveal {
-    animation: none !important;
-  }
-  .lsw-site *,
-  .lsw-site *::before,
-  .lsw-site *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  .lsw *, .lsw *::before, .lsw *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
 }
