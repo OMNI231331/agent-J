@@ -1,4 +1,5 @@
 import * as S from "./scripts.ts";
+import type { StripeAddress } from "./stripe.ts";
 
 /** The only Redis capability the commerce layer needs. Upstash in production, a local client in tests. */
 export interface RedisLike {
@@ -9,15 +10,34 @@ export type Line = { sku: string; qty: number };
 export type ReservationStatus = "reserved" | "awaiting_payment" | "committed" | "committed_oversold" | "released";
 export type Reservation = { id: string; status: ReservationStatus; lines: Line[]; expiresAt: number; sessionId?: string; reason?: string; subtotalCents?: number };
 export type OrderStatus = "awaiting_payment" | "paid" | "payment_failed" | "needs_attention" | "refunded";
-export type Order = { sessionId: string; status: OrderStatus; createdAt: number; updatedAt: number; details: OrderDetails };
+export type Fulfillment = "unfulfilled" | "shipped" | "cancelled";
+export type Order = {
+  sessionId: string;
+  status: OrderStatus;
+  createdAt: number;
+  updatedAt: number;
+  details: OrderDetails;
+  /** Only set on paid / needs_attention orders. */
+  fulfillment?: Fulfillment;
+  fulfillmentUpdatedAt?: number;
+  tracking?: string;
+};
+export type OrderItem = { sku: string; name: string; variant: string; qty: number; catalogUnitCents: number | null };
+/** Only what is needed to take payment and ship the order. Never card data. */
 export type OrderDetails = {
   reservationId: string;
   lines: Line[];
   amountTotal: number | null;
   currency: string | null;
   email: string | null;
-  paymentIntent?: string | null;
   note?: string;
+  amountSubtotal?: number | null;
+  /** Stripe PaymentIntent id, for reconciling with Stripe and issuing refunds. */
+  paymentIntent?: string | null;
+  customerName?: string | null;
+  shipping?: { name: string | null; address: StripeAddress } | null;
+  /** Names and variants as sold, with the catalog price at the time the order was recorded. */
+  items?: OrderItem[];
 };
 
 const P = "lsw:";
@@ -35,6 +55,11 @@ export const K = {
 export const RETENTION_SEC = 60 * 60 * 24 * 30;
 // Higher rank wins; an order never moves to a lower rank. A late "payment failed" can never overwrite "paid".
 const ORDER_RANK: Record<OrderStatus, number> = { awaiting_payment: 1, payment_failed: 2, paid: 3, needs_attention: 4, refunded: 5 };
+/**
+ * Order status only moves up this ladder. paid outranks payment_failed so a stray or replayed "failed" event can
+ * never overwrite a paid order; refunded is final.
+ */
+export const ORDER_RANK: Record<OrderStatus, number> = { awaiting_payment: 1, payment_failed: 2, paid: 3, needs_attention: 4, refunded: 5 };
 
 /** Canonical encoding: merged, sorted by SKU, so the same cart always produces the same string. */
 export function normalizeLines(lines: Line[]): Line[] {
@@ -151,14 +176,29 @@ export class InventoryStore {
 
   /** Returns false if the order already has a higher-precedence status (out-of-order or duplicate events). */
   async upsertOrder(sessionId: string, status: OrderStatus, details: OrderDetails, now: number): Promise<boolean> {
-    const r = await this.r.eval(S.ORDER_UPSERT, [K.order(sessionId), K.orderIndex], [sessionId, status, String(ORDER_RANK[status]), String(now), JSON.stringify(details)]);
+    const fulfilmentDefault = status === "paid" || status === "needs_attention" ? "unfulfilled" : "";
+    const r = await this.r.eval(S.ORDER_UPSERT, [K.order(sessionId), K.orderIndex], [sessionId, status, String(ORDER_RANK[status]), String(now), JSON.stringify(details), fulfilmentDefault]);
     return Number(r) === 1;
+  }
+
+  /** Marks a paid order shipped or cancelled. Returns "ok", "unchanged", "not_fulfillable" or "invalid_transition:<current>". */
+  async setFulfilment(sessionId: string, target: "shipped" | "cancelled", now: number, tracking = ""): Promise<string> {
+    return String(await this.r.eval(S.SET_FULFILMENT, [K.order(sessionId)], [target, String(now), tracking]));
   }
 
   async getOrder(sessionId: string): Promise<Order | null> {
     const h = pairsToObject(await this.r.eval(S.HGETALL, [K.order(sessionId)], []));
     if (!h.status) return null;
-    return { sessionId, status: h.status as OrderStatus, createdAt: Number(h.createdAt), updatedAt: Number(h.updatedAt), details: JSON.parse(h.details) };
+    return {
+      sessionId,
+      status: h.status as OrderStatus,
+      createdAt: Number(h.createdAt),
+      updatedAt: Number(h.updatedAt),
+      details: JSON.parse(h.details),
+      fulfillment: (h.fulfillment as Fulfillment | undefined) || undefined,
+      fulfillmentUpdatedAt: h.fulfillmentUpdatedAt ? Number(h.fulfillmentUpdatedAt) : undefined,
+      tracking: h.tracking || undefined,
+    };
   }
 
   async recentOrders(limit = 20): Promise<Order[]> {

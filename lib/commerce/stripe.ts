@@ -29,18 +29,26 @@ export function signStripePayload(rawBody: string, secret: string, t = Math.floo
   return `t=${t},v1=${createHmac("sha256", secret).update(`${t}.${rawBody}`, "utf8").digest("hex")}`;
 }
 
+export type StripeAddress = { line1?: string | null; line2?: string | null; city?: string | null; state?: string | null; postal_code?: string | null; country?: string | null };
+export type StripeShipping = { name?: string | null; address?: StripeAddress | null };
+
 export type CheckoutSession = {
   id: string;
   url?: string | null;
   status?: "open" | "complete" | "expired";
   payment_status?: "paid" | "unpaid" | "no_payment_required";
   amount_total?: number | null;
-  amount_subtotal?: number | null;
-  payment_intent?: string | null;
   currency?: string | null;
   client_reference_id?: string | null;
   metadata?: Record<string, string> | null;
-  customer_details?: { email?: string | null } | null;
+  amount_subtotal?: number | null;
+  /** A string id, or an object when the event was expanded. */
+  payment_intent?: string | { id?: string } | null;
+  customer_details?: { email?: string | null; name?: string | null } | null;
+  /** Current API versions put the shipping address here... */
+  collected_information?: { shipping_details?: StripeShipping | null } | null;
+  /** ...older API versions put it here. Both are read. */
+  shipping_details?: StripeShipping | null;
 };
 
 /** Minimal Stripe REST client (no SDK). Runs only on the server; the key never reaches the browser. */
@@ -60,9 +68,13 @@ export class StripeError extends Error {
   }
 }
 
+/** Test hook: point at a local fake Stripe. Honoured ONLY for test-mode keys, so a live key can never be redirected. */
+export function stripeBase(secretKey: string): string {
+  return stripeMode(secretKey) === "test" && process.env.STRIPE_API_BASE ? process.env.STRIPE_API_BASE : "https://api.stripe.com/v1";
+}
+
 export function stripeClient(secretKey: string, fetchImpl: typeof fetch = fetch): StripeApi {
-  // Test hook: point at a local fake Stripe. Honoured ONLY for test-mode keys, so a live key can never be redirected.
-  const base = stripeMode(secretKey) === "test" && process.env.STRIPE_API_BASE ? process.env.STRIPE_API_BASE : "https://api.stripe.com/v1";
+  const base = stripeBase(secretKey);
   const call = async (method: "GET" | "POST", path: string, body?: URLSearchParams, idem?: string) => {
     const headers: Record<string, string> = { Authorization: `Bearer ${secretKey}`, "Stripe-Version": "2024-06-20" };
     if (body) headers["Content-Type"] = "application/x-www-form-urlencoded";
