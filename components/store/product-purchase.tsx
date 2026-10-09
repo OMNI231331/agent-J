@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useModal } from "@/lib/use-modal";
-import { COLORS, money, type ColorId, type Product } from "@/lib/catalog";
+import { COLORS, MAX_UNITS_PER_ORDER, money, type ColorId, type Product } from "@/lib/catalog";
 import { availabilityLabel, getVariant, MAX_PER_LINE, variantAvailability, type StockMap } from "@/lib/inventory";
 import { ProductArt } from "./product-art";
 import type { ArtView } from "./garment-art";
@@ -16,7 +16,7 @@ const VIEWS: { view: ArtView; label: string }[] = [
 ];
 
 export function ProductPurchase({ product, stock }: { product: Product; stock: StockMap }) {
-  const { add } = useCart();
+  const { add, lines, count } = useCart();
   const firstColor = product.colors.find((c) => product.variants.some((v) => v.color === c && variantAvailability(product, v, stock) === "in_stock")) ?? product.colors[0];
   const [color, setColor] = useState<ColorId>(firstColor);
   const [size, setSize] = useState<string | null>(product.sizes.length === 1 ? product.sizes[0] : null);
@@ -27,6 +27,9 @@ export function ProductPurchase({ product, stock }: { product: Product; stock: S
   const variant = size ? getVariant(product, color, size) : undefined;
   const status = size ? variantAvailability(product, variant, stock) : null;
   const canBuy = status === "in_stock";
+  // The bag has limits (per item and per order); say so instead of silently ignoring the click.
+  const inBag = variant ? (lines.find((l) => l.sku === variant.sku)?.qty ?? 0) : 0;
+  const bagLimit = canBuy && (count >= MAX_UNITS_PER_ORDER || inBag >= MAX_PER_LINE);
   const sizeStates = useMemo(
     () => Object.fromEntries(product.sizes.map((s) => [s, variantAvailability(product, getVariant(product, color, s), stock)])),
     [product, color, stock],
@@ -118,8 +121,8 @@ export function ProductPurchase({ product, stock }: { product: Product; stock: S
             <p aria-live="polite" className="eyebrow mt-6 min-h-4">
               {status ? availabilityLabel[status] : "Select a size to see availability"}
             </p>
-            <button aria-disabled={size ? !canBuy : false} className="btn mt-3 w-full" disabled={!!size && !canBuy} onClick={addToBag} type="button">
-              {!size ? "Select a size" : canBuy ? `Add to bag — ${money(product.priceCents)}` : "Unavailable"}
+            <button aria-disabled={size ? !canBuy || bagLimit : false} className="btn mt-3 w-full" disabled={!!size && (!canBuy || bagLimit)} onClick={addToBag} type="button">
+              {!size ? "Select a size" : bagLimit ? (count >= MAX_UNITS_PER_ORDER ? `Bag is full (${MAX_UNITS_PER_ORDER} items per order)` : `Limit reached (${MAX_PER_LINE} per item)`) : canBuy ? `Add to bag — ${money(product.priceCents)}` : "Unavailable"}
             </button>
             <p className="mt-3 text-xs text-steel">Limit {MAX_PER_LINE} per item. Run size and restock plans to be confirmed.</p>
           </>

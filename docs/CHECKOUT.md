@@ -64,7 +64,7 @@ Use the **real production counts** for each SKU only after the garments exist. D
 ## 6. Automated tests
 ```bash
 pnpm typecheck
-pnpm test        # needs redis-server installed locally; 61 tests on real Redis: stock limits, concurrent buyers, duplicate/racing webhooks, expired/failed payments, automatic refunds and refund retries, signatures, validation
+pnpm test        # needs redis-server installed locally; 68 tests on real Redis: stock limits, concurrent buyers, duplicate/racing webhooks, expired/failed payments, automatic refunds and refund retries, signatures, validation
 pnpm build && pnpm smoke   # full purchase against the built app (real Upstash client + fake Stripe)
 ```
 CI (`.github/workflows/test.yml`) runs all of these on every pull request.

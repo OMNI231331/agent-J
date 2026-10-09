@@ -191,3 +191,6 @@ export const allSkus = () => [...bySku.keys()];
 
 /** Max units of one variant per order (limited-drop guard; stock is checked separately). */
 export const MAX_PER_LINE = 3;
+/** Total units in one order, and the most distinct lines a bag may hold. Enforced in the bag AND on the server. */
+export const MAX_UNITS_PER_ORDER = 6;
+export const MAX_CART_LINES = 20;

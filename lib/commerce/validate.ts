@@ -1,12 +1,10 @@
-import { findSku, MAX_PER_LINE } from "../catalog.ts";
+import { findSku, MAX_CART_LINES, MAX_PER_LINE, MAX_UNITS_PER_ORDER } from "../catalog.ts";
 import type { Line } from "./store.ts";
 
 export type CartInput = { sku?: unknown; qty?: unknown; priceCents?: unknown; color?: unknown; size?: unknown };
 export type ValidationResult = { ok: true; lines: Line[] } | { ok: false; status: 400 | 409; error: string };
 
-export const MAX_LINES = 20;
-/** Total units in one order. Keeps a single checkout from reserving a whole limited drop. */
-export const MAX_UNITS_PER_ORDER = 6;
+export const MAX_LINES = MAX_CART_LINES;
 
 /**
  * Server-side validation of a cart. The client only proposes SKU + quantity; price, product,
