@@ -167,3 +167,30 @@ body:has(.lsw) { background: #0a0a0b; }
 @media (prefers-reduced-motion: reduce) {
   .lsw *, .lsw *::before, .lsw *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- Storefront motion and large-display scaling ---------- */
+/* The storefront is sized in rem, so a larger root size scales the whole layout crisply on 1440p and 4K screens. */
+@media (min-width: 2200px) { html:has(.lsw) { font-size: 18px; } }
+@media (min-width: 2800px) { html:has(.lsw) { font-size: 22px; } }
+@media (min-width: 3400px) { html:has(.lsw) { font-size: 26px; } }
+
+@keyframes lsw-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes lsw-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lsw-slide-in { from { transform: translateX(100%); } to { transform: none; } }
+
+/* Each page fades up on navigation (app/(store)/template.tsx re-mounts per route). */
+.lsw .lsw-page { animation: lsw-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Sections after the hero rise in as they scroll into view. Pure CSS: browsers without scroll-driven animations just show them. */
+@supports (animation-timeline: view()) {
+  .lsw main section ~ section {
+    animation: lsw-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0px entry 220px;
+  }
+}
+
+/* Scroll-driven animations follow scrolling, not time, so shortening their duration does nothing: switch them off outright. */
+@media print, (prefers-reduced-motion: reduce) {
+  .lsw .lsw-page, .lsw main section ~ section { animation: none !important; }
+}

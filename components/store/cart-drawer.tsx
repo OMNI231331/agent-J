@@ -40,8 +40,8 @@ export function CartDrawer() {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div aria-hidden className="absolute inset-0 bg-black/70" onClick={() => setOpen(false)} />
-      <aside aria-label="Shopping bag" aria-modal="true" className="relative flex h-dvh w-full max-w-md flex-col border-l border-line bg-coal outline-none" ref={panelRef} role="dialog" tabIndex={-1}>
+      <div aria-hidden className="absolute inset-0 animate-[lsw-fade_220ms_ease-out] bg-black/70" onClick={() => setOpen(false)} />
+      <aside aria-label="Shopping bag" aria-modal="true" className="relative flex h-dvh w-full max-w-md animate-[lsw-slide-in_340ms_cubic-bezier(0.22,1,0.36,1)] flex-col border-l border-line bg-coal outline-none" ref={panelRef} role="dialog" tabIndex={-1}>
         <div className="flex h-16 items-center justify-between border-b border-line px-5">
           <h2 className="eyebrow !text-bone">Bag ({count})</h2>
           <button aria-label="Close bag" className="-mr-2 grid h-11 w-11 place-items-center" onClick={() => setOpen(false)} type="button">
