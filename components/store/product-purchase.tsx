@@ -49,7 +49,7 @@ export function ProductPurchase({ product, stock }: { product: Product; stock: S
       {/* gallery */}
       <div className="lg:sticky lg:top-24 lg:self-start">
         <div className="img-frame aspect-[4/5]">
-          <ProductArt className="h-full w-full" color={color} product={product} view={view} />
+          <ProductArt className="lsw-swap h-full w-full" color={color} key={`${color}-${view}`} product={product} view={view} />
         </div>
         <div className="mt-3 grid grid-cols-4 gap-3" role="group" aria-label="Product views">
           {VIEWS.map((v) => (
