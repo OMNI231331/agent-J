@@ -167,3 +167,30 @@ body:has(.lst) { background: #0a0a0b; }
 @media (prefers-reduced-motion: reduce) {
   .lst *, .lst *::before, .lst *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- Storefront motion and large-display scaling ---------- */
+/* The storefront is sized in rem, so a larger root size scales the whole layout crisply on 1440p and 4K screens. */
+@media (min-width: 2200px) { html:has(.lst) { font-size: 18px; } }
+@media (min-width: 2800px) { html:has(.lst) { font-size: 22px; } }
+@media (min-width: 3400px) { html:has(.lst) { font-size: 26px; } }
+
+@keyframes lst-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes lst-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lst-slide-in { from { transform: translateX(100%); } to { transform: none; } }
+
+/* Each page fades up on navigation (app/(store)/template.tsx re-mounts per route). */
+.lst .lst-page { animation: lst-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Sections after the hero rise in as they scroll into view. Pure CSS: browsers without scroll-driven animations just show them. */
+@supports (animation-timeline: view()) {
+  .lst main section ~ section {
+    animation: lst-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0px entry 220px;
+  }
+}
+
+/* Scroll-driven animations follow scrolling, not time, so shortening their duration does nothing: switch them off outright. */
+@media print, (prefers-reduced-motion: reduce) {
+  .lst .lst-page, .lst main section ~ section { animation: none !important; }
+}

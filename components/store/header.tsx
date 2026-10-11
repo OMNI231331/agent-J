@@ -69,7 +69,7 @@ export function Header() {
         </div>
       </div>
       {menu && (
-        <nav aria-label="Mobile" className="fixed inset-0 z-30 overflow-auto bg-ink pt-28 md:hidden" id="mobile-nav">
+        <nav aria-label="Mobile" className="fixed inset-0 z-30 animate-[lst-fade_200ms_ease-out] overflow-auto bg-ink pt-28 md:hidden" id="mobile-nav">
           <ul className="container-lst py-6">
             {links.map((l) => (
               <li className="border-b border-line" key={l.href}>

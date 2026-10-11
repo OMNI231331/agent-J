@@ -73,14 +73,34 @@ redis.call('ZREM', KEYS[2], ARGV[1])
 return 'awaiting_payment'
 `;
 
-/** KEYS: order, orderIndex | ARGV: sessionId, status, rank, nowMs, details — never moves an order backwards. */
+/**
+ * KEYS: order, orderIndex | ARGV: sessionId, status, rank, nowMs, details, fulfilmentDefault
+ * Never moves an order backwards (a lower rank is ignored). fulfilmentDefault ("" for none) is only written once,
+ * so later events can never reset a shipped order to unfulfilled.
+ */
 export const ORDER_UPSERT = `
 local cur = tonumber(redis.call('HGET', KEYS[1], 'rank') or '0')
 if tonumber(ARGV[3]) < cur then return 0 end
 redis.call('HSET', KEYS[1], 'status', ARGV[2], 'rank', ARGV[3], 'details', ARGV[5], 'updatedAt', ARGV[4])
 redis.call('HSETNX', KEYS[1], 'createdAt', ARGV[4])
+if ARGV[6] ~= '' then redis.call('HSETNX', KEYS[1], 'fulfillment', ARGV[6]) end
 redis.call('ZADD', KEYS[2], 'NX', ARGV[4], ARGV[1])
 return 1
+`;
+
+/**
+ * KEYS: order | ARGV: target, nowMs, tracking
+ * unfulfilled -> shipped | cancelled. Only paid (or needs_attention) orders can be fulfilled. Repeating the same target is a no-op.
+ */
+export const SET_FULFILMENT = `
+local st = redis.call('HGET', KEYS[1], 'status')
+if st ~= 'paid' and st ~= 'needs_attention' then return 'not_fulfillable' end
+local cur = redis.call('HGET', KEYS[1], 'fulfillment') or 'unfulfilled'
+if cur == ARGV[1] then return 'unchanged' end
+if cur ~= 'unfulfilled' then return 'invalid_transition:' .. cur end
+redis.call('HSET', KEYS[1], 'fulfillment', ARGV[1], 'fulfillmentUpdatedAt', ARGV[2])
+if ARGV[3] ~= '' then redis.call('HSET', KEYS[1], 'tracking', ARGV[3]) end
+return 'ok'
 `;
 
 export const HSET = `redis.call('HSET', KEYS[1], unpack(ARGV)) return 1`;
