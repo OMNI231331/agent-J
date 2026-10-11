@@ -1,5 +1,5 @@
 export const site = {
-  name: "LSW",
+  name: "LST",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   /** Provided by the founder. Override with NEXT_PUBLIC_CONTACT_EMAIL (e.g. a branded address later). */
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "caleb.bowland@fwcsstudents.org",

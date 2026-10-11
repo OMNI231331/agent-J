@@ -11,7 +11,7 @@ How it works
 - **Amount check:** the subtotal Stripe charged must equal the subtotal reserved at catalog prices; if not, the order is flagged `needs_attention` for review before shipping.
 
 ## 1. Upstash Redis
-1. Create an account at https://console.upstash.com → **Create database** → name `lsw-inventory`, type *Regional*, a region close to your Vercel functions (US East if unsure), TLS on.
+1. Create an account at https://console.upstash.com → **Create database** → name `lst-inventory`, type *Regional*, a region close to your Vercel functions (US East if unsure), TLS on.
 2. Open the database → **REST API** section → copy **UPSTASH_REDIS_REST_URL** and **UPSTASH_REDIS_REST_TOKEN**.
    *(Alternative: in Vercel → Storage / Marketplace → add **Upstash Redis** to the project. It injects `KV_REST_API_URL` and `KV_REST_API_TOKEN`; the app accepts either pair.)*
 3. Keep the token secret. It must never be a `NEXT_PUBLIC_` variable.
@@ -46,8 +46,8 @@ npm i -g vercel && vercel link      # one-time: install the Vercel CLI and link 
 vercel env pull .env.local --environment=preview   # variables marked Sensitive are NOT pulled; for those, paste UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN into .env.local by hand
 pnpm inventory show                 # every SKU; "not stocked" until you set it
 pnpm inventory seed 3 --yes         # TEST ONLY: 3 of every SKU (refuses if anything is already stocked)
-pnpm inventory set LSW001-HOOD-WASHED-BLACK-M 12     # absolute count — only when no checkouts are open
-pnpm inventory add LSW001-HOOD-WASHED-BLACK-M +5     # restock/correct safely while selling
+pnpm inventory set LST001-HOOD-WASHED-BLACK-M 12     # absolute count — only when no checkouts are open
+pnpm inventory add LST001-HOOD-WASHED-BLACK-M +5     # restock/correct safely while selling
 ```
 Use the **real production counts** for each SKU only after the garments exist. Don't invent numbers.
 

@@ -28,10 +28,10 @@ const display = Archivo({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: { default: "LSW — Faith / Discipline / Purpose", template: "%s — LSW" },
-  description: "LSW is a streetwear brand in development: oversized silhouettes, original gothic-inspired graphics and selected crystal detailing. DROP 001 is in sampling.",
+  title: { default: "LST — Faith / Discipline / Purpose", template: "%s — LST" },
+  description: "LST is a streetwear brand in development: oversized silhouettes, original gothic-inspired graphics and selected crystal detailing. DROP 001 is in sampling.",
   alternates: { canonical: "./" }, // each page names itself (query strings like ?sort= are not separate pages)
-  openGraph: { siteName: "LSW", type: "website" },
+  openGraph: { siteName: "LST", type: "website" },
   twitter: { card: "summary" },
 };
 

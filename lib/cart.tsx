@@ -6,7 +6,7 @@ import { cartReducer, type CartLine } from "./cart-logic";
 
 export type { CartLine } from "./cart-logic";
 
-const KEY = "lsw.cart.v1";
+const KEY = "lst.cart.v1";
 
 type Ctx = {
   lines: CartLine[];

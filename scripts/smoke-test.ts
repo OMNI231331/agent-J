@@ -12,7 +12,7 @@ import { InventoryStore } from "../lib/commerce/store.ts";
 import { signStripePayload } from "../lib/commerce/stripe.ts";
 
 const WHSEC = "whsec_smoke", CRON = "cron_smoke", TOKEN = "tok_smoke", APP_PORT = 3000; // 3000 = host allowed by the existing eve auth config
-const SKU = "LSW001-HOOD-WASHED-BLACK-M";
+const SKU = "LST001-HOOD-WASHED-BLACK-M";
 
 // ---- fake Stripe
 const sessions = new Map<string, { id: string; status: string; params: URLSearchParams }>();
@@ -111,7 +111,7 @@ try {
     assert.equal(r.status, 200);
     assert.equal(((await r.json()) as { duplicate?: boolean }).duplicate, true);
     assert.equal(await stock(), 1);
-    assert.equal(Number(await admin.command("ZCARD", "lsw:orders")), 1);
+    assert.equal(Number(await admin.command("ZCARD", "lst:orders")), 1);
   });
   await step("success page shows the confirmed order", async () => {
     const html = await (await fetch(`${B}/checkout/success?session_id=${sessionId}`)).text();
@@ -150,7 +150,7 @@ try {
     await store.setStock({ [SKU]: 1 });
   });
   await step("an order over 6 items is rejected", async () => {
-    const r = await post("/api/checkout", { lines: [{ sku: SKU, qty: 3 }, { sku: "LSW001-HOOD-WASHED-BLACK-L", qty: 3 }, { sku: "LSW001-TEE-WASHED-BLACK-M", qty: 1 }] }, { "x-forwarded-for": "203.0.113.60" });
+    const r = await post("/api/checkout", { lines: [{ sku: SKU, qty: 3 }, { sku: "LST001-HOOD-WASHED-BLACK-L", qty: 3 }, { sku: "LST001-TEE-WASHED-BLACK-M", qty: 1 }] }, { "x-forwarded-for": "203.0.113.60" });
     assert.equal(r.status, 409);
   });
   await step("branded 404 page, robots.txt, sitemap.xml and security headers", async () => {

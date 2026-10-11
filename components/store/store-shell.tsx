@@ -9,7 +9,7 @@ import { Header } from "./header";
 export function StoreShell({ children }: { children: ReactNode }) {
   return (
     <CartProvider>
-      <div className="lsw">
+      <div className="lst">
         <a className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:bg-bone focus:px-4 focus:py-2 focus:text-ink" href="#main">
           Skip to content
         </a>

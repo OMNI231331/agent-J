@@ -17,11 +17,11 @@
 Ignored on purpose: a cluster of near-identical "directed by jesus hoodie" pages on unrelated domains (garbled, spam).
 
 ## What this does and doesn't tell us
-- **Faith streetwear is a real, populated category.** Several established brands exist; LSW would not be first.
-- **Price evidence:** one data point only (Mountain Movers ≈ €55 for a hoodie, unverified). No usable price range yet, so **do not use these numbers to set LSW prices.**
+- **Faith streetwear is a real, populated category.** Several established brands exist; LST would not be first.
+- **Price evidence:** one data point only (Mountain Movers ≈ €55 for a hoodie, unverified). No usable price range yet, so **do not use these numbers to set LST prices.**
 - **Complaints / reviews:** none gathered. The most important part of this skill is still undone.
-- **The gap (hypothesis, not a finding):** none of the brands above was seen combining all three of LSW's ideas: faith meaning + dark editorial look + real crystal detailing at a premium price. That might be a gap or might mean nobody wants it. It must be checked by actually visiting each brand's site and reading their reviews.
-- **Threat / IP warning:** cross graphics and gothic lettering are a crowded visual area. Chrome Hearts is widely known for its gothic cross and hardware; I could not verify how it enforces its designs, but LSW's cross and lettering should be reviewed by a designer or attorney so they don't resemble it.
+- **The gap (hypothesis, not a finding):** none of the brands above was seen combining all three of LST's ideas: faith meaning + dark editorial look + real crystal detailing at a premium price. That might be a gap or might mean nobody wants it. It must be checked by actually visiting each brand's site and reading their reviews.
+- **Threat / IP warning:** cross graphics and gothic lettering are a crowded visual area. Chrome Hearts is widely known for its gothic cross and hardware; I could not verify how it enforces its designs, but LST's cross and lettering should be reviewed by a designer or attorney so they don't resemble it.
 
 ## To finish this properly (needs a person or a session with web access)
 1. Open each brand's own site; record the comparable hoodie/tee price, fabric weight, and positioning line.

@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Page not found", robots: { index: fa
 export default function NotFound() {
   return (
     <StoreShell>
-      <div className="container-lsw py-24 text-center sm:py-32">
+      <div className="container-lst py-24 text-center sm:py-32">
         <p className="eyebrow">404</p>
         <h1 className="display mt-4 text-5xl sm:text-7xl">Page not found</h1>
         <p className="mx-auto mt-6 max-w-md text-silver">That page doesn&apos;t exist or has moved.</p>

@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const p = getProduct((await params).slug);
   if (!p) return {};
   const description = p.description.length > 155 ? `${p.description.slice(0, 152).trimEnd()}…` : p.description;
-  return { title: p.name, description, openGraph: { title: `${p.name} — LSW`, description: p.tagline } };
+  return { title: p.name, description, openGraph: { title: `${p.name} — LST`, description: p.tagline } };
 }
 
 export default async function ProductPage({ params }: Props) {
@@ -26,7 +26,7 @@ export default async function ProductPage({ params }: Props) {
     "@type": "Product",
     name: product.name,
     description: product.description,
-    brand: { "@type": "Brand", name: "LSW" },
+    brand: { "@type": "Brand", name: "LST" },
     // Offers are only emitted for sellable, confirmed-price products.
     ...(product.purchasable && product.pricing === "confirmed" && {
       offers: {
@@ -38,7 +38,7 @@ export default async function ProductPage({ params }: Props) {
     }),
   };
   return (
-    <div className="container-lsw pt-8 pb-24 sm:pt-12">
+    <div className="container-lst pt-8 pb-24 sm:pt-12">
       <script dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} type="application/ld+json" />
       <ProductPurchase product={product} stock={stock} />
     </div>

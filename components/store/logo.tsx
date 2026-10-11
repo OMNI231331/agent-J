@@ -17,8 +17,8 @@ function Chrome({ id }: { id: string }) {
 
 type LogoProps = { className?: string; label?: string; mono?: boolean };
 
-/** LSW primary wordmark. `mono` uses currentColor (small sizes, one-colour contexts). */
-export function Wordmark({ className, label = "LSW", mono = false }: LogoProps) {
+/** LST primary wordmark. `mono` uses currentColor (small sizes, one-colour contexts). */
+export function Wordmark({ className, label = "LST", mono = false }: LogoProps) {
   const id = useId();
   return (
     <svg className={className} viewBox={`0 0 ${WORDMARK_VIEWBOX.w} ${WORDMARK_VIEWBOX.h}`} role="img" aria-label={label}>
@@ -29,7 +29,7 @@ export function Wordmark({ className, label = "LSW", mono = false }: LogoProps) 
 }
 
 /** Standalone spiked-cross symbol. */
-export function Monogram({ className, label = "LSW symbol", mono = false }: LogoProps) {
+export function Monogram({ className, label = "LST symbol", mono = false }: LogoProps) {
   const id = useId();
   return (
     <svg className={className} viewBox={`0 0 ${MONOGRAM_VIEWBOX.w} ${MONOGRAM_VIEWBOX.h}`} role="img" aria-label={label}>

@@ -36,7 +36,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ink">
-      <div className="container-lsw flex h-16 items-center justify-between">
+      <div className="container-lst flex h-16 items-center justify-between">
         <button aria-controls="mobile-nav" aria-expanded={menu} aria-label={menu ? "Close menu" : "Open menu"} className="-ml-2 grid h-11 w-11 place-items-center md:hidden" onClick={() => setMenu(!menu)} type="button">
           {menu ? <X size={22} /> : <Menu size={22} />}
         </button>
@@ -47,7 +47,7 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <Link aria-label="LSW — home" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" href="/">
+        <Link aria-label="LST — home" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" href="/">
           <Wordmark className="h-6 w-auto" />
         </Link>
         <div className="flex items-center gap-8">
@@ -70,7 +70,7 @@ export function Header() {
       </div>
       {menu && (
         <nav aria-label="Mobile" className="fixed inset-0 z-30 overflow-auto bg-ink pt-28 md:hidden" id="mobile-nav">
-          <ul className="container-lsw py-6">
+          <ul className="container-lst py-6">
             {links.map((l) => (
               <li className="border-b border-line" key={l.href}>
                 <Link aria-current={active(l.href) ? "page" : undefined} className="display flex min-h-16 items-center justify-between text-4xl" href={l.href}>

@@ -11,10 +11,10 @@ import { cartReducer, sanitizeLines } from "../lib/cart-logic.ts";
 import { handleStripeEvent, type StripeEvent } from "../lib/commerce/webhook.ts";
 import { RespClient, startRedis } from "./redis-harness.ts";
 
-const HOODIE = "LSW001-HOOD-WASHED-BLACK-M";
-const HOODIE_L = "LSW001-HOOD-WASHED-BLACK-L";
-const TEE = "LSW001-TEE-WASHED-BLACK-M";
-const CONCEPT = "LSW001-STMT-BLACK-M";
+const HOODIE = "LST001-HOOD-WASHED-BLACK-M";
+const HOODIE_L = "LST001-HOOD-WASHED-BLACK-L";
+const TEE = "LST001-TEE-WASHED-BLACK-M";
+const CONCEPT = "LST001-STMT-BLACK-M";
 
 let redis: Awaited<ReturnType<typeof startRedis>>;
 let client: RespClient;
@@ -431,7 +431,7 @@ describe("checkout session creation and cancellation", () => {
     };
     return { api, calls };
   }
-  const deps = (stripe: StripeApi) => ({ store, stripe, origin: "https://lsw.test", liveMode: false, newId: rid });
+  const deps = (stripe: StripeApi) => ({ store, stripe, origin: "https://lst.test", liveMode: false, newId: rid });
 
   test("prices come from the catalog and the reservation travels with the session", async () => {
     await store.setStock({ [HOODIE]: 3 });

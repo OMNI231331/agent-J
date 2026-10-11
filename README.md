@@ -1,6 +1,6 @@
-# LSW — Premium limited-edition streetwear
+# LST — Premium limited-edition streetwear
 
-Next.js 16 / React 19 / Tailwind 4 storefront for **LSW**, plus the existing eve assistant at `/assistant`.
+Next.js 16 / React 19 / Tailwind 4 storefront for **LST**, plus the existing eve assistant at `/assistant`.
 
 - **Storefront:** `app/(store)/` · components `components/store/` · data `lib/catalog.ts` · cart `lib/cart.tsx` · inventory rules `lib/inventory.ts`
 - **Commerce:** `lib/commerce/` (atomic Redis inventory, Stripe checkout, webhook) · `app/api/checkout`, `app/api/stripe/webhook`, `app/api/cron/release-reservations` · tests in `tests/` · setup in `docs/CHECKOUT.md`

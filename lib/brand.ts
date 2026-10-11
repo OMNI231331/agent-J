@@ -1,16 +1,17 @@
 /**
- * LSW logo geometry — single source of truth.
+ * LST logo geometry — single source of truth.
  * Every SVG (site components + /public/brand files) is generated from these points,
  * so the logo stays identical everywhere. Original construction, not derived from any font.
  */
 export type Pt = readonly [number, number];
 
-export const WORDMARK_VIEWBOX = { w: 330, h: 100 } as const;
+export const WORDMARK_VIEWBOX = { w: 316, h: 100 } as const;
 
-export const WORDMARK_GLYPHS: Record<"L" | "S" | "W", Pt[]> = {
+export const WORDMARK_GLYPHS: Record<"L" | "S" | "T", Pt[]> = {
   L: [[6, 4], [46, 4], [46, 68], [92, 68], [106, 96], [6, 96], [22, 80], [22, 20]],
   S: [[138, 4], [198, 4], [198, 24], [146, 24], [146, 38], [184, 38], [198, 52], [198, 82], [184, 96], [126, 96], [114, 84], [114, 76], [178, 76], [178, 62], [140, 62], [126, 48], [126, 16]],
-  W: [[206, 4], [234, 4], [244, 62], [258, 14], [274, 14], [288, 62], [298, 4], [326, 4], [306, 96], [282, 96], [266, 48], [250, 96], [226, 96]],
+  // T: wide chamfered bar, straight stem tapering to a blunt foot, symmetric about x=258
+  T: [[206, 4], [310, 4], [298, 24], [270, 24], [270, 84], [264, 96], [252, 96], [246, 84], [246, 24], [218, 24]],
 };
 
 export const MONOGRAM_VIEWBOX = { w: 100, h: 100 } as const;

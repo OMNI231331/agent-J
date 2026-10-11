@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { site } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Contact", description: "Get in touch with LSW." };
+export const metadata: Metadata = { title: "Contact", description: "Get in touch with LST." };
 
 export default function ContactPage() {
   return (
-    <div className="container-lsw grid gap-12 py-16 sm:py-24 lg:grid-cols-2">
+    <div className="container-lst grid gap-12 py-16 sm:py-24 lg:grid-cols-2">
       <div>
         <p className="eyebrow">Contact</p>
         <h1 className="display mt-3 text-5xl sm:text-7xl">Get in touch</h1>

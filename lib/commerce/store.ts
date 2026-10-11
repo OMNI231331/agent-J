@@ -20,7 +20,7 @@ export type OrderDetails = {
   note?: string;
 };
 
-const P = "lsw:";
+const P = "lst:";
 export const K = {
   inv: (sku: string) => `${P}inv:${sku}`,
   res: (id: string) => `${P}res:${id}`,
