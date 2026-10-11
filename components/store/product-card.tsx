@@ -8,16 +8,16 @@ export function ProductCard({ product, stock }: { product: Product; stock: Stock
   return (
     <article className="group">
       <Link className="block" href={`/products/${product.slug}`}>
-        <div className="img-frame relative aspect-[4/5] transition-colors group-hover:border-silver">
-          <ProductArt className="absolute inset-0 h-full w-full transition-opacity duration-300 group-hover:opacity-0" color={product.colors[0]} product={product} view="front" />
-          <ProductArt className="absolute inset-0 h-full w-full opacity-0 transition-opacity duration-300 group-hover:opacity-100" color={product.colors[0]} product={product} view="back" />
+        <div className="img-frame relative aspect-[4/5] transition-colors duration-500 group-hover:border-silver">
+          <ProductArt className="lsw-zoom absolute inset-0 h-full w-full transition-opacity duration-500 group-hover:opacity-0" color={product.colors[0]} product={product} view="front" />
+          <ProductArt className="lsw-zoom absolute inset-0 h-full w-full opacity-0 transition-opacity duration-500 group-hover:opacity-100" color={product.colors[0]} product={product} view="back" />
           {status !== "in_stock" && (
             <span className="eyebrow absolute left-3 top-3 border border-line bg-ink/80 px-2 py-1 !text-bone">{availabilityLabel[status]}</span>
           )}
         </div>
         <div className="mt-4 flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-sm font-medium uppercase tracking-wide">{product.name}</h3>
+            <h3 className="text-sm font-medium uppercase tracking-wide underline decoration-transparent underline-offset-4 transition-colors duration-300 group-hover:decoration-silver">{product.name}</h3>
             <p className="mt-1 text-xs text-steel">{product.tagline}</p>
           </div>
           <p className="font-mono text-sm">{money(product.priceCents)}</p>

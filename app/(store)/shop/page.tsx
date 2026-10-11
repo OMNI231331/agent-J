@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { ProductCard } from "@/components/store/product-card";
 import { getStockMap } from "@/lib/commerce/stock";
 import { products, type Category } from "@/lib/catalog";
@@ -40,7 +41,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       <p aria-live="polite" className="eyebrow mt-4">{list.length} {list.length === 1 ? "product" : "products"}</p>
       {list.length ? (
         <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-12 lg:grid-cols-3 xl:grid-cols-4">
-          {list.map((p) => <ProductCard key={p.slug} product={p} stock={stock} />)}
+          {list.map((p, i) => <div className="lsw-reveal" key={p.slug} style={{ "--d": `${i * 70}ms` } as CSSProperties}><ProductCard product={p} stock={stock} /></div>)}
         </div>
       ) : (
         <p className="mt-16 text-steel">Nothing in this category yet.</p>

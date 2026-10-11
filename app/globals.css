@@ -88,8 +88,9 @@
   }
 }
 
-* {
-  border-color: var(--border);
+/* Layered so Tailwind border-color utilities (e.g. border-line) can override it. */
+@layer base {
+  * { border-color: var(--border); }
 }
 
 html {
@@ -114,6 +115,7 @@ textarea {
 /* ================= LSW storefront ================= */
 body:has(.lsw) { background: #0a0a0b; }
 .lsw {
+  --border: var(--color-line);
   min-height: 100dvh;
   background: var(--color-ink);
   color: var(--color-bone);
@@ -175,11 +177,54 @@ body:has(.lsw) { background: #0a0a0b; }
 @media (min-width: 3400px) { html:has(.lsw) { font-size: 26px; } }
 
 @keyframes lsw-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes lsw-rise-blur { from { opacity: 0; transform: translateY(26px); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes lsw-float { 0%, 100% { transform: translateY(0) rotate(-.4deg); } 50% { transform: translateY(-14px) rotate(.4deg); } }
+@keyframes lsw-twinkle { 0%, 78%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); } 86% { opacity: 1; transform: scale(1) rotate(25deg); } }
+@keyframes lsw-marquee { to { transform: translateX(-50%); } }
+@keyframes lsw-cue { 0% { transform: scaleY(0); transform-origin: top; } 45% { transform: scaleY(1); transform-origin: top; } 55% { transform: scaleY(1); transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
+@keyframes lsw-beam { 0%, 100% { opacity: .55; } 50% { opacity: .85; } }
 @keyframes lsw-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes lsw-slide-in { from { transform: translateX(100%); } to { transform: none; } }
 
 /* Each page fades up on navigation (app/(store)/template.tsx re-mounts per route). */
-.lsw .lsw-page { animation: lsw-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.lsw .lsw-page { animation: lsw-rise-blur 650ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Staggered entrance: set --d on the element for its delay. */
+.lsw .lsw-reveal { animation: lsw-rise-blur 950ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--d, 0ms); }
+
+/* Hero: slow float, studio light beam, outlined backdrop type, scroll cue. */
+.lsw .lsw-float { animation: lsw-float 9s ease-in-out infinite; will-change: transform; }
+.lsw .lsw-beam {
+  background: conic-gradient(from 180deg at 50% 0%, transparent 158deg, rgba(236,233,226,.1) 170deg, rgba(236,233,226,.2) 180deg, rgba(236,233,226,.1) 190deg, transparent 202deg);
+  -webkit-mask-image: linear-gradient(180deg, #000 20%, transparent 85%); mask-image: linear-gradient(180deg, #000 20%, transparent 85%);
+  animation: lsw-beam 7s ease-in-out infinite;
+}
+.lsw .lsw-outline { color: transparent; -webkit-text-stroke: 1px rgba(201,204,209,.09); line-height: 1; }
+.lsw .lsw-outline-strong { color: transparent; -webkit-text-stroke: 1px var(--color-silver); }
+.lsw .lsw-cue-line { display: block; width: 1px; height: 2.75rem; background: var(--color-silver); animation: lsw-cue 2.4s cubic-bezier(.65,0,.35,1) infinite; }
+
+/* Crystal glints inside garment renders. Static and faint when motion is off. */
+.lsw .lsw-glint { opacity: 0; transform-box: fill-box; transform-origin: center; animation: lsw-twinkle 4.2s ease-in-out infinite; }
+
+/* Brand marquee */
+.lsw .lsw-marquee { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); color: var(--color-bone); }
+.lsw .lsw-marquee-track { display: flex; width: max-content; animation: lsw-marquee 42s linear infinite; }
+.lsw .lsw-marquee:hover .lsw-marquee-track { animation-play-state: paused; }
+
+/* Image hover zoom (inside a .group) and image swaps on the product page. */
+.lsw .lsw-zoom { transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1), opacity 500ms ease; }
+.lsw .group:hover .lsw-zoom { transform: scale(1.045); }
+.lsw .lsw-swap { animation: lsw-fade 420ms ease-out both; }
+
+/* Nav underline that draws in from the left. */
+.lsw .lsw-link { position: relative; }
+.lsw .lsw-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform 450ms cubic-bezier(0.16, 1, 0.3, 1); }
+.lsw .lsw-link:hover::after, .lsw .lsw-link[aria-current="page"]::after { transform: scaleX(1); transform-origin: left; }
+
+/* Light sweep across buttons. */
+.lsw .btn { position: relative; overflow: hidden; isolation: isolate; }
+.lsw .btn::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.35) 50%, transparent 65%); transform: translateX(-120%); transition: transform 800ms cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
+.lsw .btn:hover::after { transform: translateX(120%); }
 
 /* Sections after the hero rise in as they scroll into view. Pure CSS: browsers without scroll-driven animations just show them. */
 @supports (animation-timeline: view()) {
@@ -192,5 +237,8 @@ body:has(.lsw) { background: #0a0a0b; }
 
 /* Scroll-driven animations follow scrolling, not time, so shortening their duration does nothing: switch them off outright. */
 @media print, (prefers-reduced-motion: reduce) {
-  .lsw .lsw-page, .lsw main section ~ section { animation: none !important; }
+  .lsw .lsw-page, .lsw main section ~ section, .lsw .lsw-reveal, .lsw .lsw-float, .lsw .lsw-beam,
+  .lsw .lsw-marquee-track, .lsw .lsw-cue-line, .lsw .lsw-swap { animation: none !important; }
+  .lsw .lsw-glint { animation: none !important; opacity: .5; transform: none; }
+  .lsw .group:hover .lsw-zoom { transform: none; }
 }

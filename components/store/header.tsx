@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { Menu, ShoppingBag, X } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { Wordmark } from "./logo";
@@ -35,14 +36,14 @@ export function Header() {
   const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ink">
+    <header className="sticky top-0 z-40 border-b border-line/70 bg-ink/70 backdrop-blur-xl backdrop-saturate-150">
       <div className="container-lsw flex h-16 items-center justify-between">
         <button aria-controls="mobile-nav" aria-expanded={menu} aria-label={menu ? "Close menu" : "Open menu"} className="-ml-2 grid h-11 w-11 place-items-center md:hidden" onClick={() => setMenu(!menu)} type="button">
           {menu ? <X size={22} /> : <Menu size={22} />}
         </button>
         <nav aria-label="Primary" className="hidden items-center gap-8 md:flex">
           {links.slice(0, 3).map((l) => (
-            <Link aria-current={active(l.href) ? "page" : undefined} className={`eyebrow transition-colors hover:text-bone ${active(l.href) ? "!text-bone" : ""}`} href={l.href} key={l.href}>
+            <Link aria-current={active(l.href) ? "page" : undefined} className={`lsw-link eyebrow transition-colors hover:text-bone ${active(l.href) ? "!text-bone" : ""}`} href={l.href} key={l.href}>
               {l.label}
             </Link>
           ))}
@@ -53,7 +54,7 @@ export function Header() {
         <div className="flex items-center gap-8">
           <nav aria-label="Secondary" className="hidden items-center gap-8 md:flex">
             {links.slice(3).map((l) => (
-              <Link aria-current={active(l.href) ? "page" : undefined} className={`eyebrow transition-colors hover:text-bone ${active(l.href) ? "!text-bone" : ""}`} href={l.href} key={l.href}>
+              <Link aria-current={active(l.href) ? "page" : undefined} className={`lsw-link eyebrow transition-colors hover:text-bone ${active(l.href) ? "!text-bone" : ""}`} href={l.href} key={l.href}>
                 {l.label}
               </Link>
             ))}
@@ -72,7 +73,7 @@ export function Header() {
         <nav aria-label="Mobile" className="fixed inset-0 z-30 animate-[lsw-fade_200ms_ease-out] overflow-auto bg-ink pt-28 md:hidden" id="mobile-nav">
           <ul className="container-lsw py-6">
             {links.map((l) => (
-              <li className="border-b border-line" key={l.href}>
+              <li className="lsw-reveal border-b border-line" key={l.href} style={{ "--d": `${links.indexOf(l) * 60}ms` } as CSSProperties}>
                 <Link aria-current={active(l.href) ? "page" : undefined} className="display flex min-h-16 items-center justify-between text-4xl" href={l.href}>
                   {l.label}
                   <span className="eyebrow">{active(l.href) ? "●" : "→"}</span>
