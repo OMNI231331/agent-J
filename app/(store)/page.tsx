@@ -1,18 +1,21 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { Monogram, Wordmark } from "@/components/store/logo";
+import { Wordmark } from "@/components/store/logo";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { ProductCard } from "@/components/store/product-card";
 import { getStockMap } from "@/lib/commerce/stock";
 import { GarmentArt } from "@/components/store/garment-art";
 import { products } from "@/lib/catalog";
+import { DropStatus } from "@/components/store/drop-status";
+import { BrandMarquee } from "@/components/store/marquee";
+import { getDropView } from "@/lib/drop-server";
 
 export const dynamic = "force-dynamic";
 
 const GRAIN = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
 export default async function Home() {
-  const stock = await getStockMap();
+  const [stock, drop] = await Promise.all([getStockMap(), getDropView()]);
   const featured = products.slice(0, 3);
   return (
     <>
@@ -29,7 +32,8 @@ export default async function Home() {
               <span className="lsw-reveal block text-silver" style={{ "--d": "240ms" } as CSSProperties}>It&apos;s a reminder.</span>
             </h1>
             <p className="lsw-reveal eyebrow mt-6 !text-silver" style={{ "--d": "380ms" } as CSSProperties}>Faith / Discipline / Purpose</p>
-            <p className="lsw-reveal mt-6 max-w-md text-silver" style={{ "--d": "480ms" } as CSSProperties}>Oversized silhouettes. Original graphics. Selected crystal detail. DROP 001 is in development; fabric and fit are being confirmed in sampling.</p>
+            <p className="lsw-reveal mt-6 max-w-md text-silver" style={{ "--d": "480ms" } as CSSProperties}>Oversized silhouettes. Original graphics. Selected crystal detail.{drop.phase === "unscheduled" && " DROP 001 is in development; fabric and fit are being confirmed in sampling."}</p>
+            {drop.phase !== "unscheduled" && <div className="lsw-reveal mt-8" style={{ "--d": "540ms" } as CSSProperties}><DropStatus compact drop={drop} /></div>}
             <div className="lsw-reveal mt-10 flex flex-col gap-3 sm:flex-row" style={{ "--d": "600ms" } as CSSProperties}>
               <Link className="btn" href="/drop-001">Shop Drop 001</Link>
               <Link className="btn btn-ghost" href="#early-access">Join early access</Link>
@@ -46,20 +50,7 @@ export default async function Home() {
       </section>
 
       {/* MARQUEE */}
-      <div aria-hidden className="lsw-marquee overflow-hidden border-b border-line py-5 sm:py-7">
-        <div className="lsw-marquee-track">
-          {[0, 1].map((k) => (
-            <span className="flex shrink-0 items-center" key={k}>
-              {["Faith", "Discipline", "Purpose", "More than clothing", "Drop 001"].map((t, i) => (
-                <span className="flex items-center" key={t}>
-                  <span className={`display px-6 text-3xl sm:px-10 sm:text-5xl ${i % 2 ? "lsw-outline-strong" : ""}`}>{t}</span>
-                  <Monogram className="h-5 w-5 sm:h-7 sm:w-7" mono />
-                </span>
-              ))}
-            </span>
-          ))}
-        </div>
-      </div>
+      <BrandMarquee />
 
       {/* FEATURED DROP */}
       <section aria-labelledby="featured-title" className="container-lsw py-20 sm:py-28">

@@ -43,7 +43,8 @@ export type Product = {
   variants: Variant[];
   /** Real photography, once it exists. Concept renders are used when empty. */
   photos?: { src: string; alt: string; kind: "front" | "back" | "detail" | "model" }[];
-  sizeGuide: { note: string; rows: { size: string; chest?: string; length?: string; sleeve?: string }[] };
+  /** Garment measurements in cm, laid flat. Only filled in from an approved production sample. */
+  sizeGuide: { note: string; rows: { size: string; chestCm?: number; lengthCm?: number; sleeveCm?: number }[] };
 };
 
 /**

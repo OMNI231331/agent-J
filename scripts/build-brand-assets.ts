@@ -95,3 +95,72 @@ wr("limited-label-35x35mm.svg", svg("0 0 35 35",
   `<text x="17.5" y="31" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#92959b">PIECE ___ / ___</text>`,
   "LSW limited-edition label, 35 x 35 mm; numbering only once a tracked run exists"));
 console.log("tags & labels written");
+
+// ---- Packaging (1 unit = 1 mm). Proofs for the printer; finishes noted in docs/PACKAGING.md ----
+const packDir = new URL("../public/brand/packaging/", import.meta.url);
+mkdirSync(packDir, { recursive: true });
+const wp = (n: string, s: string) => writeFileSync(new URL(n, packDir), s);
+const INK = "#0a0a0b", LINE = "#2a2b2f", STEEL = "#92959b", SILVER = "#c9ccd1", BONE = "#ece9e2";
+const mono = (x: number, y: number, s: number, t: string, fill = SILVER, anchor = "middle", ls = 0.6) =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="'Geist Mono', ui-monospace, monospace" font-size="${s}" letter-spacing="${ls}" fill="${fill}">${t}</text>`;
+const sans = (x: number, y: number, s: number, t: string, fill = STEEL, anchor = "middle") =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Geist, Arial, sans-serif" font-size="${s}" fill="${fill}">${t}</text>`;
+const qrSlot = (x: number, y: number, size: number, label: string) =>
+  `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="none" stroke="${LINE}" stroke-dasharray="1 1" stroke-width=".3"/>` +
+  mono(x + size / 2, y + size / 2 + 0.6, 1.6, "QR", STEEL) + mono(x + size / 2, y + size + 3, 1.5, label, STEEL, "middle", 0.2);
+
+// F. Seal sticker, 40 mm round: symbol centred, pillars set on a circular path.
+wp("seal-sticker-40mm.svg", svg("0 0 40 40",
+  `<defs><path id="ring" d="M20 20 m-14 0 a14 14 0 1 1 28 0 a14 14 0 1 1 -28 0"/></defs>` +
+  `<circle cx="20" cy="20" r="20" fill="${INK}"/><circle cx="20" cy="20" r="18.6" fill="none" stroke="${SILVER}" stroke-width=".25"/>` +
+  `<circle cx="20" cy="20" r="10.2" fill="none" stroke="${LINE}" stroke-width=".25"/>` +
+  mark(15, 15, 10, SILVER) +
+  `<text font-family="'Geist Mono', ui-monospace, monospace" font-size="2.2" fill="${SILVER}"><textPath href="#ring" startOffset="0" textLength="86" lengthAdjust="spacing">FAITH · DISCIPLINE · PURPOSE · LSW ·</textPath></text>`,
+  "LSW seal sticker, 40 mm round, 1 unit = 1 mm. Die-cut line = outer circle"));
+
+// G. Thank-you card, 90 x 55 mm, front and back.
+wp("thank-you-card-front-90x55mm.svg", svg("0 0 90 55",
+  `<rect width="90" height="55" fill="${INK}"/>` + mark(39, 11, 12, SILVER) +
+  mono(45, 34, 2.8, "WEAR YOUR PURPOSE.", BONE, "middle", 1.1) + mono(45, 47, 1.7, "LSW · DROP 001", STEEL, "middle", 0.8),
+  "LSW thank-you card front, 90 x 55 mm"));
+wp("thank-you-card-back-90x55mm.svg", svg("0 0 90 55",
+  `<rect width="90" height="55" fill="${INK}"/><rect x="3" y="3" width="84" height="49" fill="none" stroke="${LINE}" stroke-width=".25"/>` +
+  word(8, 9, 18, SILVER) +
+  sans(8, 22, 2.6, "Thank you for wearing LSW.", BONE, "start") +
+  sans(8, 27, 2.1, "This piece was made in a limited run, on purpose.", STEEL, "start") +
+  sans(8, 31, 2.1, "Same mission. Different day.", STEEL, "start") +
+  mono(8, 45, 1.8, "FAITH / DISCIPLINE / PURPOSE", SILVER, "start", 0.5) +
+  qrSlot(68, 22, 14, "next drop list"),
+  "LSW thank-you card back, 90 x 55 mm. QR slot: add only once the URL is live and test-scanned"));
+
+// H. Product info card, 90 x 55 mm: fit + crystal care. Garment-specific fabric lines stay blank until confirmed.
+wp("product-info-card-90x55mm.svg", svg("0 0 90 55",
+  `<rect width="90" height="55" fill="${BONE}"/>` +
+  `<path fill="${INK}" d="${WORDMARK_PATH}" transform="translate(6 6) scale(${14 / WORDMARK_VIEWBOX.w})"/>` +
+  mono(84, 9.5, 1.7, "PRODUCT CARE", INK, "end", 0.6) +
+  `<line x1="6" x2="84" y1="14" y2="14" stroke="${INK}" stroke-width=".2"/>` +
+  mono(6, 19, 1.7, "PIECE", INK, "start", 0.4) + `<line x1="20" x2="84" y1="19.4" y2="19.4" stroke="${INK}" stroke-width=".15"/>` +
+  mono(6, 24, 1.7, "FABRIC", INK, "start", 0.4) + `<line x1="20" x2="84" y1="24.4" y2="24.4" stroke="${INK}" stroke-width=".15"/>` +
+  mono(6, 30.5, 1.7, "CRYSTAL CARE", INK, "start", 0.4) +
+  [
+    "Turn inside out. Wash cold on a gentle cycle.",
+    "Hang dry. No tumble dryer, no bleach.",
+    "Never iron over stones or prints.",
+    "A loose stone? Contact us — we'd rather fix it.",
+  ].map((t, i) => sans(6, 35 + i * 3.6, 2, t, "#3a3c41", "start")).join("") +
+  mono(84, 51, 1.4, "CONFIRM WASH STEPS AGAINST THE CARE LABEL", "#7a7d83", "end", 0.2),
+  "LSW product info card, 90 x 55 mm. PIECE and FABRIC filled per garment from confirmed specs"));
+
+// I. Tissue repeat tile, 60 x 60 mm: half-drop repeat (marks sit inside the tile, so it tiles seamlessly).
+// The printer repeats it across 500 x 750 mm sheets.
+wp("tissue-repeat-tile-60mm.svg", svg("0 0 60 60", `<rect width="60" height="60" fill="${INK}"/>` + mark(11, 11, 8, SILVER) + mark(41, 41, 8, SILVER), "LSW tissue repeat tile, 60 x 60 mm, seamless half-drop"));
+
+// J. Mailer face, 350 x 280 mm: one-colour silver, quiet by design (theft-safe: no "premium inside" signals).
+wp("mailer-front-350x280mm.svg", svg("0 0 350 280",
+  `<rect width="350" height="280" fill="${INK}"/>` + mark(160, 104, 30, SILVER) +
+  mono(175, 158, 5, "LSW", SILVER, "middle", 4) +
+  mono(14, 268, 3, "RETURN ADDRESS: __________________", STEEL, "start", 0.6) +
+  `<rect x="205" y="196" width="130" height="70" fill="none" stroke="${LINE}" stroke-dasharray="3 3" stroke-width=".6"/>` +
+  mono(270, 233, 3, "SHIPPING LABEL", STEEL, "middle", 1.2),
+  "LSW mailer face, 350 x 280 mm, one-colour silver on black"));
+console.log("packaging written");

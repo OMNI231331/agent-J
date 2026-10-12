@@ -7,6 +7,7 @@ import { useCart } from "@/lib/cart";
 import { useModal } from "@/lib/use-modal";
 import { COLORS, money } from "@/lib/catalog";
 import { findSku, MAX_PER_LINE } from "@/lib/catalog";
+import { site } from "@/lib/site";
 import { ProductArt } from "./product-art";
 
 export function CartDrawer() {
@@ -94,7 +95,8 @@ export function CartDrawer() {
                 <span className="eyebrow !text-bone">Subtotal</span>
                 <span className="font-mono">{money(subtotalCents)}</span>
               </div>
-              <p className="mt-2 text-xs text-steel">Shipping and taxes are calculated at checkout. Limit {MAX_PER_LINE} per item.</p>
+              <p className="mt-2 text-xs text-steel">{site.shippingSummary ?? "Shipping and any tax are shown at checkout, before you pay."} Limit {MAX_PER_LINE} per item.</p>
+              {site.returnsSummary && <p className="mt-1 text-xs text-steel">{site.returnsSummary}</p>}
               {error && <p className="mt-3 text-sm text-alert" role="alert">{error}</p>}
               <button className="btn mt-4 w-full" disabled={busy} onClick={checkout} type="button">
                 {busy ? "Starting checkout…" : "Checkout"}

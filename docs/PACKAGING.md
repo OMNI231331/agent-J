@@ -27,3 +27,12 @@ Generated from `scripts/build-brand-assets.ts`; 1 SVG unit = 1 mm, so each file 
 | `neck-label-woven-40x60mm.svg` | 40 × 60 mm | `[SIZE]` is a placeholder to set per garment. |
 | `care-label-40x70mm.svg` | 40 × 70 mm | Fields intentionally blank. Fill only with manufacturer-confirmed content. |
 | `limited-label-35x35mm.svg` | 35 × 35 mm | `PIECE ___ / ___` stays blank until a tracked numbered run exists. |
+
+### Packaging files (`public/brand/packaging/`)
+| File | Size | Notes |
+|---|---|---|
+| `seal-sticker-40mm.svg` | Ø 40 mm | Die-cut on the outer circle. Matte black paper or vinyl, silver ink (or foil). Cheapest brand moment — order first. |
+| `thank-you-card-front-90x55mm.svg` / `-back-` | 90 × 55 mm | 350 gsm black board, silver foil or white ink. QR slot stays empty until the URL is live and test-scanned. |
+| `product-info-card-90x55mm.svg` | 90 × 55 mm | Off-white uncoated. PIECE / FABRIC are written per garment from confirmed specs. Crystal-care lines are general guidance — match them to the final care label. |
+| `tissue-repeat-tile-60mm.svg` | 60 mm tile | Seamless half-drop. Printer repeats it over 500 × 750 mm, 17–20 gsm acid-free black tissue, one silver ink. |
+| `mailer-front-350x280mm.svg` | 350 × 280 mm | One-colour silver on black. Deliberately quiet (nothing that advertises value to porch thieves). Dashed box = shipping-label zone. |

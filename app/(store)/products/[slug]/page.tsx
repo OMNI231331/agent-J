@@ -4,6 +4,7 @@ import { ProductPurchase } from "@/components/store/product-purchase";
 import { getProduct } from "@/lib/catalog";
 import { productAvailability } from "@/lib/inventory";
 import { getStockMap } from "@/lib/commerce/stock";
+import { getDropView } from "@/lib/drop-server";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const product = getProduct((await params).slug);
   if (!product) notFound();
-  const stock = await getStockMap();
+  const [stock, drop] = await Promise.all([getStockMap(), getDropView()]);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -39,7 +40,7 @@ export default async function ProductPage({ params }: Props) {
   return (
     <div className="container-lsw pt-8 pb-24 sm:pt-12">
       <script dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} type="application/ld+json" />
-      <ProductPurchase product={product} stock={stock} />
+      <ProductPurchase drop={drop} product={product} stock={stock} />
     </div>
   );
 }

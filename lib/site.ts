@@ -10,6 +10,13 @@ export const site = {
   },
   /** "preview" = pre-launch (banner shown, draft data). "live" = real store. */
   mode: (process.env.NEXT_PUBLIC_STORE_MODE === "live" ? "live" : "preview") as "preview" | "live",
-  /** Set to an ISO date ONLY when a launch date is confirmed. */
+  /** Public opening of DROP 001: a full ISO time with timezone, set ONLY when confirmed. Parsed and enforced in lib/drop.ts. */
   launchDate: process.env.NEXT_PUBLIC_LAUNCH_DATE ?? null,
+  /**
+   * One-line shipping and returns terms shown on product pages and in the bag BEFORE checkout
+   * (surprise costs are the top fixable reason carts are abandoned). Null until decided: the UI then says
+   * the exact cost is shown at checkout, before payment, and never invents a rate.
+   */
+  shippingSummary: process.env.NEXT_PUBLIC_SHIPPING_SUMMARY || null,
+  returnsSummary: process.env.NEXT_PUBLIC_RETURNS_SUMMARY || null,
 };

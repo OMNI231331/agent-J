@@ -14,6 +14,15 @@ const files = [
   ["Embroidery", "lsw-embroidery.svg"], ["Screen print (1 colour)", "lsw-screenprint.svg"], ["Rhinestone layout", "lsw-rhinestone.svg"], ["Symbol rhinestone layout", "lsw-monogram-rhinestone.svg"],
 ];
 
+const tagFiles = [
+  ["Hang tag · front · 50×90", "hang-tag-front-50x90mm.svg"], ["Hang tag · reverse", "hang-tag-reverse-50x90mm.svg"],
+  ["Neck label · woven · 40×60", "neck-label-woven-40x60mm.svg"], ["Care label · 40×70", "care-label-40x70mm.svg"], ["Limited label · 35×35", "limited-label-35x35mm.svg"],
+];
+const packFiles = [
+  ["Seal sticker · Ø40", "seal-sticker-40mm.svg"], ["Thank-you card · front · 90×55", "thank-you-card-front-90x55mm.svg"], ["Thank-you card · back", "thank-you-card-back-90x55mm.svg"],
+  ["Product info card · 90×55", "product-info-card-90x55mm.svg"], ["Tissue repeat tile · 60 mm", "tissue-repeat-tile-60mm.svg"], ["Mailer face · 350×280", "mailer-front-350x280mm.svg"],
+];
+
 export default function BrandPage() {
   return (
     <div className="container-lsw py-16 sm:py-24">
@@ -52,27 +61,17 @@ export default function BrandPage() {
         <p className="mt-2 font-mono text-sm tracking-widest text-steel">GEIST MONO — LABELS · 0.22EM · UPPERCASE</p>
       </Section>
 
-      <Section title="Tag & label concepts">
-        <p className="mb-6 max-w-2xl text-sm text-steel">Layout concepts only. Final sizes, materials, and care/compliance content depend on the manufacturer and the markets sold into — see docs/PACKAGING.md. Care, fiber, and origin fields are intentionally blank.</p>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <Tile label="Hang tag — front (50 × 90 mm)">
-            <div className="grid aspect-[5/9] w-32 place-items-center border border-line bg-black"><div className="text-center"><Monogram className="mx-auto h-10" /><Wordmark className="mx-auto mt-4 w-20" /><p className="mt-3 font-mono text-[7px] tracking-[0.3em] text-steel">DROP 001</p></div></div>
-          </Tile>
-          <Tile label="Hang tag — reverse">
-            <div className="flex aspect-[5/9] w-32 flex-col justify-between border border-line bg-black p-3 text-center"><p className="font-mono text-[6px] leading-relaxed tracking-[0.2em] text-silver">FAITH<br />DISCIPLINE<br />PURPOSE</p><p className="text-[7px] leading-snug text-steel">More than clothing.<br />It&apos;s a reminder.</p><div className="mx-auto grid h-12 w-12 place-items-center border border-dashed border-steel text-[6px] text-steel">QR (add when store URL is final)</div></div>
-          </Tile>
-          <Tile label="Inside neck label (woven, ~40 × 60 mm)">
-            <div className="w-40 border border-line bg-black p-4 text-center"><Wordmark className="mx-auto w-16" /><p className="mt-3 font-mono text-[8px] tracking-[0.3em] text-steel">SIZE</p><p className="display text-2xl">L</p></div>
-          </Tile>
-          <Tile label="Care label (sewn-in, fields blank)">
-            <div className="w-40 border border-line bg-bone p-3 font-mono text-[7px] leading-relaxed text-ink">FIBER CONTENT: ________<br />WASH: ________<br />MADE IN: ________<br />MANUFACTURER / IMPORTER: ________<br />RN / ID: ________</div>
-          </Tile>
-          <Tile label="Limited-edition label">
-            <div className="w-40 border border-line bg-black p-4 text-center"><Wordmark className="mx-auto w-14" /><p className="mt-2 font-mono text-[8px] tracking-[0.3em] text-silver">DROP 001</p><p className="font-mono text-[7px] tracking-[0.3em] text-steel">LIMITED EDITION</p><p className="mt-2 font-mono text-[7px] text-steel">No. ___ / ___ <span className="text-[6px]">(only if tracked)</span></p></div>
-          </Tile>
-          <Tile label="Thank-you card (~90 × 55 mm)">
-            <div className="flex aspect-[90/55] w-48 flex-col items-center justify-center border border-line bg-black text-center"><Monogram className="h-8" /><p className="mt-2 font-mono text-[7px] tracking-[0.25em] text-silver">WEAR YOUR PURPOSE.</p></div>
-          </Tile>
+      <Section title="Tags & labels — print files">
+        <p className="mb-6 max-w-2xl text-sm text-steel">These are the actual print-proof files (1 SVG unit = 1 mm). Final materials, foil and woven construction come from the manufacturer; care, fiber and origin fields stay blank until confirmed — see docs/PACKAGING.md.</p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {tagFiles.map(([label, f]) => <FileTile file={`tags/${f}`} key={f} label={label} />)}
+        </div>
+      </Section>
+
+      <Section title="Packaging — print files">
+        <p className="mb-6 max-w-2xl text-sm text-steel">Start lean for DROP 001: a stock black mailer, the seal sticker, tissue, and both cards. Print the custom mailer face once volume clears the printer&apos;s minimums. QR slots stay empty until the store URL is live and test-scanned.</p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {packFiles.map(([label, f]) => <FileTile file={`packaging/${f}`} key={f} label={label} />)}
         </div>
       </Section>
     </div>
@@ -81,6 +80,16 @@ export default function BrandPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <section className="mt-16 border-t border-line pt-8"><h2 className="eyebrow mb-6 !text-bone">{title}</h2>{children}</section>;
+}
+function FileTile({ label, file }: { label: string; file: string }) {
+  return (
+    <a className="group block border border-line bg-coal p-4 hover:border-silver" href={`/brand/${file}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- static SVG proof, shown at its own aspect ratio */}
+      <img alt={`${label} print proof`} className="mx-auto h-40 w-full object-contain" loading="lazy" src={`/brand/${file}`} />
+      <p className="eyebrow mt-4 group-hover:text-bone">{label}</p>
+      <p className="mt-1 break-all font-mono text-[11px] text-steel">{file}</p>
+    </a>
+  );
 }
 function Tile({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="border border-line bg-coal p-6"><div className="flex min-h-40 items-center justify-center">{children}</div><p className="eyebrow mt-5">{label}</p></div>;

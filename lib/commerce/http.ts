@@ -1,3 +1,4 @@
+import { checkoutGate, EARLY_ACCESS_COOKIE, formatOpening, readCookie, type DropClock } from "../drop.ts";
 import { startCheckout } from "./checkout.ts";
 import type { CommerceConfig } from "./config.ts";
 import type { InventoryStore } from "./store.ts";
@@ -17,7 +18,12 @@ export type CheckoutRequestDeps = {
   automaticTax?: boolean;
   now?: () => number;
   log?: Log;
+  /** DROP release clock. Omitted = no gate (tests and pre-scheduling behave as before). */
+  drop?: DropClock;
 };
+
+/** Checkout starts allowed per early-access pass, so a forwarded link can't be used to clear out a drop. */
+export const PASS_CHECKOUT_LIMIT = 4;
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
@@ -43,6 +49,14 @@ export async function handleCheckoutRequest(req: Request, d: CheckoutRequestDeps
     // Stops scripts from reserving (hoarding) a limited drop: max 8 checkout starts per IP per 10 minutes.
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
     if (!(await d.cfg.store.allow(`checkout:${ip}`, 8, 600))) return json({ error: "Too many checkout attempts. Please wait a few minutes and try again." }, 429);
+    // The release clock is enforced here, not in the browser: a hidden button is not a lock.
+    if (d.drop) {
+      const now = (d.now ?? Date.now)();
+      const gate = checkoutGate(d.drop, now, readCookie(req.headers.get("cookie"), EARLY_ACCESS_COOKIE));
+      if (!gate.open) return json({ error: `DROP 001 opens ${formatOpening(gate.opensAt)}.`, opensAt: gate.opensAt }, 403);
+      if (gate.passId && !(await d.cfg.store.allow(`ea:${gate.passId}`, PASS_CHECKOUT_LIMIT, 86400)))
+        return json({ error: "This early-access link has reached its checkout limit. Public release opens soon." }, 429);
+    }
     const body = (await req.json().catch(() => null)) as { lines?: unknown } | null;
     if (!body) return json({ error: "Invalid request." }, 400);
     const result = await startCheckout(body.lines, {

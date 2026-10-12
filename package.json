@@ -19,7 +19,8 @@
     "start:eve": "eve start",
     "test": "node --test --test-concurrency=1 tests/*.test.ts",
     "inventory": "node --env-file-if-exists=.env.local scripts/inventory.ts",
-    "smoke": "node scripts/smoke-test.ts"
+    "smoke": "node scripts/smoke-test.ts",
+    "early-access": "node --env-file-if-exists=.env.local scripts/early-access.ts"
   },
   "dependencies": {
     "@radix-ui/react-use-controllable-state": "1.2.2",

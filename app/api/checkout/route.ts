@@ -1,5 +1,6 @@
 import { commerceConfig } from "@/lib/commerce/config";
 import { handleCheckoutRequest } from "@/lib/commerce/http";
+import { dropClock } from "@/lib/drop";
 import { site } from "@/lib/site";
 
 export const runtime = "nodejs";
@@ -14,5 +15,6 @@ export async function POST(req: Request) {
     requestOrigin: new URL(req.url).origin,
     shippingRateId: process.env.STRIPE_SHIPPING_RATE_ID || undefined,
     automaticTax: process.env.STRIPE_AUTOMATIC_TAX === "true",
+    drop: dropClock(),
   });
 }

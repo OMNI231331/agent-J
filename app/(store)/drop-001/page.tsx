@@ -5,14 +5,15 @@ import { Monogram } from "@/components/store/logo";
 import { ProductCard } from "@/components/store/product-card";
 import { getStockMap } from "@/lib/commerce/stock";
 import { products } from "@/lib/catalog";
-import { site } from "@/lib/site";
+import { DropStatus, EarlyAccessNotice } from "@/components/store/drop-status";
+import { getDropView } from "@/lib/drop-server";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Drop 001", description: "LSW DROP 001 — the first limited collection." };
 
-export default async function DropPage() {
-  const stock = await getStockMap();
+export default async function DropPage({ searchParams }: { searchParams: Promise<{ ea?: string }> }) {
+  const [stock, drop, { ea }] = await Promise.all([getStockMap(), getDropView(), searchParams]);
   return (
     <>
       <section className="relative overflow-hidden border-b border-line">
@@ -21,10 +22,9 @@ export default async function DropPage() {
           <p className="eyebrow">LSW</p>
           <h1 className="display mt-4 text-[clamp(3.5rem,14vw,11rem)]">Drop 001</h1>
           <p className="mt-6 max-w-xl text-lg text-silver">The first collection sets the standard: three focused pieces plus one concept, produced in limited quantity — not stocked endlessly.</p>
-          <p className="eyebrow mt-6 !text-bone">
-            {site.launchDate ? `Opens ${new Date(site.launchDate).toLocaleDateString("en-US", { dateStyle: "long" })}` : "Release date to be announced — join the early-access list"}
-          </p>
-          <Link className="btn mt-8" href="/#early-access">Join early access</Link>
+          <div className="mt-8"><DropStatus drop={drop} /></div>
+          {ea && <div className="mt-6 max-w-xl"><EarlyAccessNotice state={ea} /></div>}
+          {drop.phase !== "open" && <Link className="btn mt-8" href="/#early-access">Join early access</Link>}
         </div>
       </section>
 
