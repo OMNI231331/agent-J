@@ -1,8 +1,8 @@
-<!-- /founder:pricing-strategy · 2026-10-08 · input: Price ladder for LSW DROP 001 hoodie, tee and sweatpants across Core / Signature / Special Edition, with unit economics for physical goods; current draft site prices $120 hoodie, $55 tee, $90 sweatpants -->
+<!-- /founder:pricing-strategy · 2026-10-08 · input: Price ladder for LST DROP 001 hoodie, tee and sweatpants across Core / Signature / Special Edition, with unit economics for physical goods; current draft site prices $120 hoodie, $55 tee, $90 sweatpants -->
 
 > Note (2026-10-09): written against the earlier draft site prices ($120 hoodie, $55 tee, $90 sweatpants). The storefront now on main drafts $125 hoodie, $55 tee, $35 beanie and has no sweatpants yet. The recommendation below ($135 hoodie, $55 tee) still applies; prices stay drafts until supplier quotes exist.
 
-# LSW pricing strategy: DROP 001
+# LST pricing strategy: DROP 001
 
 ## Assumptions
 
@@ -10,7 +10,7 @@ Every cost below is an assumption, not a supplier quote. No supplier quotes exis
 
 - Assumption: run size is 50 units per style, and the founder confirms the budget ceiling of $5,000 (product-brief.md).
 - Assumption: 80% of produced units sell. The rest are written off at landed cost.
-- Assumption: LSW pays outbound shipping (free shipping), and exchanges only, no cash refunds.
+- Assumption: LST pays outbound shipping (free shipping), and exchanges only, no cash refunds.
 - Assumption: payment fee is 2.9% + $0.30 per order. Not verified this session.
 - Assumption: sales mix is 40% hoodie, 40% tee, 20% sweatpants.
 - Competitor prices are reused from `founder/competitor-matrix.md`, checked 2026-10-08 (under 30 days old). Most are reseller prices, not brand stores.
@@ -44,14 +44,14 @@ Upgrade trigger: a buyer moves up a tier for stones and a smaller run. Because t
 
 ## 3. Competitive pricing context
 
-| Competitor | Sourced price | Where LSW sits |
+| Competitor | Sourced price | Where LST sits |
 |---|---|---|
-| Revenge | Hoodie $108 ([StockX](https://stockx.com/revenge-xxxtentacion-kill-hoodie-orange-black)) | Above: LSW adds crystal work |
+| Revenge | Hoodie $108 ([StockX](https://stockx.com/revenge-xxxtentacion-kill-hoodie-orange-black)) | Above: LST adds crystal work |
 | Godspeed | Hoodies $150 to $260 ([StockX](https://stockx.com/godspeed-black-monday-hoodie-black)), tee $60 ([StockX](https://stockx.com/en-gb/godspeed-gs-logo-t-shirt-white)), pants $175 ([StockX](https://stockx.com/en-gb/godspeed-new-york-grc-track-pants-black)) | Hoodie launch below, tee below, pants far below |
 | Sp5der | Rhinestone hoodies $220 to $225 ([StockX](https://stockx.com/en-gb/sp5der-rhinestone-beluga-hoodie-heather-grey)) | Below at launch and at scale. Special Edition matches it |
 | Essentials | Hoodies $90 to $175, secondary sources ([Closo](https://closo.co/blogs/blog/essentials-fear-of-god), [Solefeed](https://solefeed.com/shop/fear-of-god-essentials-90s-hoodie-8pwbep)) | Inside the range |
 
-Estimate: midpoint of five sourced hoodie prices is (150 + 240 + 260 + 220 + 225) / 5 = $219. LSW's $135 launch is 38% under it: (219 - 135) / 219 = 0.38.
+Estimate: midpoint of five sourced hoodie prices is (150 + 240 + 260 + 220 + 225) / 5 = $219. LST's $135 launch is 38% under it: (219 - 135) / 219 = 0.38.
 
 Faith brands (Selah, Not Yet Home, Jesus Studio): prices Not found.
 

@@ -1,6 +1,6 @@
-<!-- /founder:fundraise-prep · 2026-10-08 · input: Fundraise readiness for LSW, premium limited-edition faith-centered streetwear, pre-revenue, no stated raise, small startup budget (from founder/ files) -->
+<!-- /founder:fundraise-prep · 2026-10-08 · input: Fundraise readiness for LST, premium limited-edition faith-centered streetwear, pre-revenue, no stated raise, small startup budget (from founder/ files) -->
 
-# LSW fundraise prep
+# LST fundraise prep
 
 ## Assumptions
 
@@ -28,7 +28,7 @@ Total: 11 of 30.
 - 300 outside sign-ups (metrics-dashboard.md 90-day target)
 - 3 or more paid drops with sell-through of 70% or higher on each
 - Contribution margin per hoodie order at or above $51 (metrics-dashboard.md target)
-- A cleared LSW trademark and a real supplier quote
+- A cleared LST trademark and a real supplier quote
 
 ## 2. Round size and terms
 
@@ -36,9 +36,9 @@ Total: 11 of 30.
 
 **Instrument options, cheapest first**
 
-| Option | Size | Cost to founder | Fit for LSW now |
+| Option | Size | Cost to founder | Fit for LST now |
 |---|---|---|---|
-| Paid pre-orders on the LSW store | 20 hoodies x $135 = $2,700 (Estimate, at the test price) | None. Refund if cap not met | Best. Customers fund the inventory |
+| Paid pre-orders on the LST store | 20 hoodies x $135 = $2,700 (Estimate, at the test price) | None. Refund if cap not met | Best. Customers fund the inventory |
 | Friends and family | A few hundred to a few thousand | Strained relationships if it fails | Only as a written loan or gift, sized to what can be lost. Not equity |
 | Crowdfunding (Kickstarter) | Varies | Platform fee, video and ad time | Weak. Fashion succeeded about 29% of the time vs about 43% overall, per [Banklesstimes](https://www.banklesstimes.com/?p=13372) and [Crowdcrux](https://www.crowdcrux.com/?p=19769), undated secondary sources. Needs an audience first |
 | SBA microloan | Up to $50,000; average about $13,000 to $16,124 | Interest typically 8% to 13%, terms up to 6 or 7 years ([NerdWallet](https://www.nerdwallet.com/article/small-business/sba-microloans), [Gusto](https://gusto.com/resources/articles/business-finance/funding/sba-microloan-program)) | Later, after a second drop. Secondary sources only, confirm on sba.gov. Lenders want a plan and often credit history |
@@ -51,7 +51,7 @@ Total: 11 of 30.
 
 ## 3. Investor targeting framework
 
-**Investor profile for LSW, when it is ready**
+**Investor profile for LST, when it is ready**
 - Fund stage: pre-seed or seed, or angels. Revenue-based financing once there are sales.
 - Check size: $25,000 to $250,000 (Estimate: sized to a few drops).
 - Sector focus: consumer brands, apparel, streetwear, culture.
@@ -95,7 +95,7 @@ Also check Crunchbase, PitchBook and Signal by NFX for portfolio dates.
 
 Starts with the validation experiment from validate-idea.md. Dates are from the day the founder starts.
 
-- **Week 1:** Run Experiment 3: ask 5 makers for 50-unit quotes and a crystal-work minimum. Check the LSW trademark. Open the real checkout for Experiment 1.
+- **Week 1:** Run Experiment 3: ask 5 makers for 50-unit quotes and a crystal-work minimum. Check the LST trademark. Open the real checkout for Experiment 1.
 - **Weeks 2 to 3:** Run Experiment 1: 20-unit hoodie pre-order, $150 ads, full payment, refund if cap missed. Run Experiment 2 alongside ($50 per message version). Pass lines: 10 paid, 5 from strangers; 100 sign-ups.
 - **Week 4:** Decide on the numbers. Under 3 paid orders: refund, change the price or message, rerun. Order one sample if quotes work.
 - **Weeks 5 to 6:** If the cap hit, order production from pre-order cash only. Email buyers every week. Collect 2 to 3 testimonials, written with permission.

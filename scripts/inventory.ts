@@ -13,7 +13,7 @@ import { stripeClient, stripeMode } from "../lib/commerce/stripe.ts";
 
 const store = getStore();
 if (!store) {
-  console.error("Redis isn't configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (see docs/CHECKOUT.md).");
+  console.error("Redis isn't configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or KV_REST_API_URL and KV_REST_API_TOKEN) — see docs/CHECKOUT.md.");
   process.exit(1);
 }
 const [cmd, a, b] = process.argv.slice(2);

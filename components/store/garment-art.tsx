@@ -1,5 +1,5 @@
 import { COLORS, type ColorId, type Garment } from "@/lib/catalog";
-import { MONOGRAM_BLADES, MONOGRAM_VIEWBOX, WORDMARK_GLYPHS, WORDMARK_PATH, sampleOutline, toPath } from "@/lib/brand";
+import { MONOGRAM_BLADES, MONOGRAM_VIEWBOX, WORDMARK_GLYPHS, WORDMARK_PATH, sampleOutline, toPath, WORDMARK_VIEWBOX } from "@/lib/brand";
 import { useId } from "react";
 
 export type ArtView = "front" | "back" | "detail" | "label";
@@ -62,7 +62,7 @@ export function GarmentArt({ garment, color, view, level, className }: Props) {
     );
   };
   const MiniWord = ({ x, y, w, fill = "#d8d6cf" }: { x: number; y: number; w: number; fill?: string }) => (
-    <path d={WORDMARK_PATH} fill={fill} transform={`translate(${x} ${y}) scale(${w / 330})`} />
+    <path d={WORDMARK_PATH} fill={fill} transform={`translate(${x} ${y}) scale(${w / WORDMARK_VIEWBOX.w})`} />
   );
 
   const body = SILHOUETTE[garment].front;

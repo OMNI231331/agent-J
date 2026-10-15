@@ -1,6 +1,6 @@
-<!-- /founder:mvp-scope · 2026-10-08 · input: Triage the LSW DROP 001 product and brand wishlist into must/should/won't for the flow discover, sign up, buy, receive, exchange; recommend stack for the existing Next.js site with Stripe checkout and Upstash Redis inventory; solo build estimates -->
+<!-- /founder:mvp-scope · 2026-10-08 · input: Triage the LST DROP 001 product and brand wishlist into must/should/won't for the flow discover, sign up, buy, receive, exchange; recommend stack for the existing Next.js site with Stripe checkout and Upstash Redis inventory; solo build estimates -->
 
-# LSW MVP scope: DROP 001
+# LST MVP scope: DROP 001
 
 ## Assumptions
 
@@ -36,7 +36,7 @@
 
 ## 2. MVP definition
 
-A buyer can find LSW on social media, join the list, and in under 3 minutes pay for a limited hoodie or tee, then get a tracked package and a size exchange by email.
+A buyer can find LST on social media, join the list, and in under 3 minutes pay for a limited hoodie or tee, then get a tracked package and a size exchange by email.
 
 Features that make it work (6):
 
@@ -97,7 +97,7 @@ Supplier lead times were not found or quoted, so none are stated.
 
 Done means:
 
-- [ ] Trademark and domain check on LSW completed.
+- [ ] Trademark and domain check on LST completed.
 - [ ] A real test purchase with a live Stripe key completes and the order appears in Stripe.
 - [ ] Stock for each style and size decrements on payment and the page shows sold out at zero.
 - [ ] Two simultaneous purchases of the last unit do not both succeed.

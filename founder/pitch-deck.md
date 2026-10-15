@@ -1,6 +1,6 @@
-<!-- /founder:pitch-deck · 2026-10-08 · input: 12-slide pitch deck for LSW (pre-revenue premium faith-centered streetwear, DROP 001), honest traction, ask per facts.md, apparel economics from pricing-strategy.md -->
+<!-- /founder:pitch-deck · 2026-10-08 · input: 12-slide pitch deck for LST (pre-revenue premium faith-centered streetwear, DROP 001), honest traction, ask per facts.md, apparel economics from pricing-strategy.md -->
 
-# LSW pitch deck outline
+# LST pitch deck outline
 
 ## Assumptions
 
@@ -9,12 +9,12 @@
 - Assumption: sole founder, name and title not recorded, so they are placeholders.
 - All costs, margins and run sizes come from pricing-strategy.md. They are assumptions, not supplier quotes.
 
-Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a draft for an investor, partner or lender conversation. For a bootstrapped apparel brand with a cash need near $4,745 (Estimate, pricing-strategy.md), paid pre-orders are likely a better first source of cash than investors.
+Honest framing: LST has $0 revenue, 0 orders and no audience yet. This deck is a draft for an investor, partner or lender conversation. For a bootstrapped apparel brand with a cash need near $4,745 (Estimate, pricing-strategy.md), paid pre-orders are likely a better first source of cash than investors.
 
 ## Slide 1: Title
 
-**Headline:** LSW makes dark, heavyweight streetwear that carries Faith, Discipline, Purpose.
-- LSW, premium limited-edition streetwear
+**Headline:** LST makes dark, heavyweight streetwear that carries Faith, Discipline, Purpose.
+- LST, premium limited-edition streetwear
 - Tagline: [tagline pending, not yet written]
 - [Founder name], [title]
 - **Visual:** DROP 001 hoodie concept mockup (concept, not a photo of a made garment)
@@ -32,7 +32,7 @@ Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a
 
 ## Slide 3: Solution
 
-**Headline:** LSW puts a faith message in the details of a premium garment.
+**Headline:** LST puts a faith message in the details of a premium garment.
 - Heavyweight, oversized, dark pieces
 - Original cross and star motifs, crystal and embroidery detail
 - Fixed run per style, shown on the product page
@@ -50,7 +50,7 @@ Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a
 
 ## Slide 5: Market size
 
-**Headline:** Streetwear is a large market, but LSW's reachable slice is unproven and small.
+**Headline:** Streetwear is a large market, but LST's reachable slice is unproven and small.
 - TAM: global streetwear, 2025 estimates range from $185.4B ([Market Intelo](https://marketintelo.com/report/streetwear-market)) to $273.67B ([SNS Insider](https://www.snsinsider.com/press-release/global-streetwear-market)). Firms define it differently
 - SAM: faith-open streetwear buyers aged 18 to 28 in the US: Not found. [Number to find]
 - US Christian apparel: no reliable current figure found. One tracker shows $77M of online sales across tracked retailers in 2025, down 5 to 10% ([GRIPS Intelligence](https://gripsintelligence.com/insights/industries/apparel-accessories/christian-apparel-and-accessories)). Partial coverage
@@ -61,7 +61,7 @@ Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a
 
 ## Slide 6: Traction
 
-**Headline:** LSW has $0 revenue and 0 orders; the evidence so far is a built preview site and a tested plan.
+**Headline:** LST has $0 revenue and 0 orders; the evidence so far is a built preview site and a tested plan.
 - Revenue: $0. Orders: 0. Paid pre-orders: 0
 - Email sign-ups: [N, list not connected]. Waitlist, LOIs, pilots: none
 - Real: preview site (home, shop, 3 product pages, drop page, bag) built, with concept images
@@ -88,14 +88,14 @@ Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a
 **Headline:** No brand found combines faith meaning with crystal-grade detail, but the lead is short.
 - Rhinestone brands: Sp5der hoodies $220 to $225 ([StockX](https://stockx.com/en-gb/sp5der-rhinestone-beluga-hoodie-heather-grey)); Hellstar tee $350 ([Solefeed](https://solefeed.com/brand/hellstar/logo-t-shirt-rhinestones))
 - Faith brands: Selah, Not Yet Home, Jesus Studio, subtle or slogan-led ([Relevant](https://relevantmagazine.com/culture/the-rise-of-actually-good-christian-fashion-5-brands-you-need-to-know/)). Prices Not found
-- LSW hoodie at $135 is 38% under the $219 sourced midpoint (Estimate)
+- LST hoodie at $135 is 38% under the $219 sourced midpoint (Estimate)
 - Defensibility: Estimate 6 to 12 month head start. A hype brand could add a cross motif in one drop
-- **Visual:** 2x2, x axis slogan-led to detail-led, y axis no faith message to explicit faith message. LSW top right
+- **Visual:** 2x2, x axis slogan-led to detail-led, y axis no faith message to explicit faith message. LST top right
 - **Notes:** Most prices are reseller prices.
 
 ## Slide 9: Go-to-market
 
-**Headline:** LSW starts with founder-made short video and a capped hoodie pre-order, spending nothing on inventory first.
+**Headline:** LST starts with founder-made short video and a capped hoodie pre-order, spending nothing on inventory first.
 - Channel 1: organic TikTok and Reels, Estimate $0 to $10 per order
 - Channel 2: paid Meta and TikTok to sign-up page, Estimate $20 to $40 per order
 - What is working now: nothing measured yet
@@ -106,7 +106,7 @@ Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a
 
 ## Slide 10: Team
 
-**Headline:** LSW is a solo-founder brand; relevant experience is [to be stated].
+**Headline:** LST is a solo-founder brand; relevant experience is [to be stated].
 - [Founder name]: [design, sourcing or sales achievements]. Not recorded in facts.md
 - Network and following: [N]
 - Gaps: manufacturing, fulfilment help
@@ -116,7 +116,7 @@ Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a
 
 ## Slide 11: The ask
 
-**Headline:** LSW needs about $4,745 of production cash, and pre-orders may fund it better than investors.
+**Headline:** LST needs about $4,745 of production cash, and pre-orders may fund it better than investors.
 - Raise: [amount not stated by founder]. Instrument: [TBD]
 - Estimate from pricing-strategy.md: $4,745 for 50 units each of hoodie, tee, pants; $1,200 fixed launch costs
 - Use of funds, Estimate: production 80%, samples and labels 12%, store and ads 8% (arithmetic: 4,745 / 5,945; 700 / 5,945; 500 / 5,945)
@@ -128,7 +128,7 @@ Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a
 
 ## Slide 12: Closing
 
-**Headline:** LSW tests whether faith and premium streetwear can share one garment, with 10 paid orders as the first proof.
+**Headline:** LST tests whether faith and premium streetwear can share one garment, with 10 paid orders as the first proof.
 - Vision: [one sentence from founder]
 - Contact: [email], [Instagram], [domain, not yet bought]
 - Remember: $135 hoodie, 37.9% assumed margin, $0 spent on inventory before demand
@@ -140,7 +140,7 @@ Honest framing: LSW has $0 revenue, 0 orders and no audience yet. This deck is a
 - A1: Unit economics table (pricing-strategy.md section 4)
 - A2: Competitor price table with sources (competitor-matrix.md)
 - A3: Personas: Janelle (primary), Marcus, Diego (persona-gen.md)
-- A4: Risks: unchecked LSW trademark, supplier minimums (50 to 250 per style per [SourceReady](https://www.sourceready.com/supplier/list/best-custom-clothing-manufacturers-for-startups)), apparel returns about 24% to 30% in secondary sources
+- A4: Risks: unchecked LST trademark, supplier minimums (50 to 250 per style per [SourceReady](https://www.sourceready.com/supplier/list/best-custom-clothing-manufacturers-for-startups)), apparel returns about 24% to 30% in secondary sources
 - A5: Validation score 18/35, verdict pivot to one hoodie capped pre-order (validate-idea.md)
 
 ## Numbers to find

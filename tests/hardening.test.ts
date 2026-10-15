@@ -14,9 +14,9 @@ import { validateCart } from "../lib/commerce/validate.ts";
 import { handleStripeEvent, type StripeEvent } from "../lib/commerce/webhook.ts";
 import { RespClient, startRedis } from "./redis-harness.ts";
 
-const HOODIE = "LSW001-HOOD-WASHED-BLACK-M";
-const TEE = "LSW001-TEE-WASHED-BLACK-M";
-const CONCEPT = "LSW001-STMT-BLACK-M";
+const HOODIE = "LST001-HOOD-WASHED-BLACK-M";
+const TEE = "LST001-TEE-WASHED-BLACK-M";
+const CONCEPT = "LST001-STMT-BLACK-M";
 const SECRET = "whsec_hardening";
 
 /** Wraps the real client so tests can simulate Redis being down, or failing at one specific step. */
@@ -90,7 +90,7 @@ function fakeStripe() {
 }
 const okCfg = (api: StripeApi): CommerceConfig => ({ ok: true, store, stripe: api, mode: "test" });
 const post = (body: unknown, headers: Record<string, string> = {}) =>
-  new Request("https://lsw.test/api/checkout", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) });
+  new Request("https://lst.test/api/checkout", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) });
 
 const paidSession = (over: Partial<CheckoutSession> = {}): CheckoutSession => ({
   id: "cs_test_paid",
@@ -109,7 +109,7 @@ const signed = (e: StripeEvent, secret = SECRET) => {
   const raw = JSON.stringify(e);
   return { raw, headers: { "stripe-signature": signStripePayload(raw, secret) } };
 };
-const webhookReq = (raw: string, headers: Record<string, string>) => new Request("https://lsw.test/api/stripe/webhook", { method: "POST", headers, body: raw });
+const webhookReq = (raw: string, headers: Record<string, string>) => new Request("https://lst.test/api/stripe/webhook", { method: "POST", headers, body: raw });
 const FUTURE = () => Date.now() + 3_600_000;
 
 // Reserve through the real store, then build the session Stripe would later report for it.
@@ -129,9 +129,9 @@ describe("cart validation: nothing from the browser is trusted", () => {
     ["empty bag", [], 400],
     ["more than 20 lines", Array.from({ length: 21 }, () => ({ sku: HOODIE, qty: 1 })), 400],
     ["a null line", [null], 400],
-    ["a made-up product ID", [{ sku: "LSW999-FREE-HOODIE", qty: 1 }], 400],
-    ["a size that does not exist (SKU edited)", [{ sku: "LSW001-HOOD-WASHED-BLACK-XXXL", qty: 1 }], 400],
-    ["a colour that does not exist (SKU edited)", [{ sku: "LSW001-HOOD-PINK-M", qty: 1 }], 400],
+    ["a made-up product ID", [{ sku: "LST999-FREE-HOODIE", qty: 1 }], 400],
+    ["a size that does not exist (SKU edited)", [{ sku: "LST001-HOOD-WASHED-BLACK-XXXL", qty: 1 }], 400],
+    ["a colour that does not exist (SKU edited)", [{ sku: "LST001-HOOD-PINK-M", qty: 1 }], 400],
     ["quantity as a string", [{ sku: HOODIE, qty: "2" }], 400],
     ["quantity 0", [{ sku: HOODIE, qty: 0 }], 400],
     ["negative quantity", [{ sku: HOODIE, qty: -1 }], 400],
@@ -158,7 +158,7 @@ describe("cart validation: nothing from the browser is trusted", () => {
   test("a rejected cart reserves nothing and never reaches Stripe", async () => {
     await store.setStock({ [HOODIE]: 5 });
     const s = fakeStripe();
-    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1, priceCents: 1 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
+    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1, priceCents: 1 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lst.test", log });
     assert.equal(res.status, 409);
     assert.equal(s.calls.n, 0);
     assert.equal(await stock(HOODIE), 5);
@@ -170,18 +170,18 @@ describe("checkout route", () => {
   beforeEach(async () => void (await store.setStock({ [HOODIE]: 100 })));
 
   test("not configured answers 503 with the setup message and touches nothing", async () => {
-    const res = await handleCheckoutRequest(post({ lines: [] }), { cfg: { ok: false, error: "Checkout isn't connected yet." }, liveMode: false, requestOrigin: "https://lsw.test", log });
+    const res = await handleCheckoutRequest(post({ lines: [] }), { cfg: { ok: false, error: "Checkout isn't connected yet." }, liveMode: false, requestOrigin: "https://lst.test", log });
     assert.equal(res.status, 503);
   });
 
   test("a malformed body is a 400, not a crash", async () => {
-    const res = await handleCheckoutRequest(post("{not json"), { cfg: okCfg(fakeStripe().api), liveMode: false, requestOrigin: "https://lsw.test", log });
+    const res = await handleCheckoutRequest(post("{not json"), { cfg: okCfg(fakeStripe().api), liveMode: false, requestOrigin: "https://lst.test", log });
     assert.equal(res.status, 400);
   });
 
   test("valid cart: stock is reserved and the customer gets a Stripe URL", async () => {
     const s = fakeStripe();
-    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
+    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lst.test", log });
     assert.equal(res.status, 200);
     assert.match(((await res.json()) as { url: string }).url, /^https:\/\/checkout\.stripe\.test\//);
     assert.equal(await stock(HOODIE), 98);
@@ -189,7 +189,7 @@ describe("checkout route", () => {
 
   test("9th checkout start from one IP in the window is rate-limited; another IP is unaffected", async () => {
     const s = fakeStripe();
-    const d = { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log };
+    const d = { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lst.test", log };
     const codes: number[] = [];
     for (let i = 0; i < 9; i++) codes.push((await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }, { "x-forwarded-for": "203.0.113.5" }), d)).status);
     assert.deepEqual(codes, [200, 200, 200, 200, 200, 200, 200, 200, 429]);
@@ -200,7 +200,7 @@ describe("checkout route", () => {
     flaky.down = true;
     logs.length = 0;
     const s = fakeStripe();
-    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
+    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lst.test", log });
     const text = await res.text();
     assert.equal(res.status, 503);
     assert.match(text, /temporarily unavailable/);
@@ -211,7 +211,7 @@ describe("checkout route", () => {
   test("Redis failing right after Stripe creates the session: a clean error and the stock is returned immediately", async () => {
     const s = fakeStripe();
     flaky.failOnce = S.HSET; // attaching the session id to the reservation fails
-    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
+    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lst.test", log });
     assert.equal(res.status, 502);
     assert.doesNotMatch(await res.text(), /simulated Redis failure/);
     assert.equal(await stock(HOODIE), 100, "the customer never received a checkout URL, so the hold is released straight away");
@@ -220,7 +220,7 @@ describe("checkout route", () => {
   test("if Redis also fails to release, the stock is held only until the hold expires, then the sweeper returns it", async () => {
     const s = fakeStripe();
     flaky.failAlways.add(S.HSET).add(S.RELEASE);
-    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lsw.test", log });
+    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 2 }] }), { cfg: okCfg(s.api), liveMode: false, requestOrigin: "https://lst.test", log });
     assert.equal(res.status, 502);
     assert.equal(await stock(HOODIE), 98, "still held: release could not run");
     flaky.failAlways.clear();
@@ -229,25 +229,25 @@ describe("checkout route", () => {
   });
 
   test("redirect origin: live mode requires the configured https URL and ignores the request's origin", () => {
-    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "https://lsw.example/", requestOrigin: "https://evil.example" }), "https://lsw.example");
-    assert.equal(resolveOrigin({ liveMode: true, siteUrl: undefined, requestOrigin: "https://lsw.example" }), null);
-    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "http://lsw.example", requestOrigin: "https://lsw.example" }), null);
-    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "https://lsw.example/path", requestOrigin: "x" }), null);
+    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "https://lst.example/", requestOrigin: "https://evil.example" }), "https://lst.example");
+    assert.equal(resolveOrigin({ liveMode: true, siteUrl: undefined, requestOrigin: "https://lst.example" }), null);
+    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "http://lst.example", requestOrigin: "https://lst.example" }), null);
+    assert.equal(resolveOrigin({ liveMode: true, siteUrl: "https://lst.example/path", requestOrigin: "x" }), null);
     assert.equal(resolveOrigin({ liveMode: false, siteUrl: undefined, requestOrigin: "http://localhost:3000" }), "http://localhost:3000");
-    assert.equal(resolveOrigin({ liveMode: false, siteUrl: "https://preview.lsw.example", requestOrigin: "http://localhost:3000" }), "https://preview.lsw.example");
+    assert.equal(resolveOrigin({ liveMode: false, siteUrl: "https://preview.lst.example", requestOrigin: "http://localhost:3000" }), "https://preview.lst.example");
   });
 
   test("live mode without an https site URL refuses to start checkout", async () => {
-    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(fakeStripe().api), liveMode: true, requestOrigin: "https://lsw.test", log });
+    const res = await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(fakeStripe().api), liveMode: true, requestOrigin: "https://lst.test", log });
     assert.equal(res.status, 503);
   });
 
   test("Stripe return URLs use the configured site URL", async () => {
     const s = fakeStripe();
-    await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(s.api), liveMode: false, siteUrl: "https://preview.lsw.example", requestOrigin: "https://evil.example", log });
+    await handleCheckoutRequest(post({ lines: [{ sku: HOODIE, qty: 1 }] }), { cfg: okCfg(s.api), liveMode: false, siteUrl: "https://preview.lst.example", requestOrigin: "https://evil.example", log });
     const p = s.calls.created[0];
-    assert.ok(p.get("success_url")!.startsWith("https://preview.lsw.example/checkout/success"));
-    assert.ok(p.get("cancel_url")!.startsWith("https://preview.lsw.example/checkout/cancelled"));
+    assert.ok(p.get("success_url")!.startsWith("https://preview.lst.example/checkout/success"));
+    assert.ok(p.get("cancel_url")!.startsWith("https://preview.lst.example/checkout/cancelled"));
   });
 });
 

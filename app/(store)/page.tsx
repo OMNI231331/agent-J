@@ -19,9 +19,9 @@ export default async function Home() {
       <section aria-labelledby="hero-title" className="relative isolate overflow-hidden border-b border-line">
         <div aria-hidden className="absolute inset-0 -z-10" style={{ backgroundImage: `${GRAIN}, radial-gradient(ellipse at 70% 40%, #2a2b2f 0%, #0a0a0b 65%)` }} />
         <Monogram aria-hidden className="absolute -right-24 top-1/2 -z-10 h-[120%] -translate-y-1/2 opacity-[0.04] lg:right-[-6%]" mono />
-        <div className="container-lsw grid min-h-[calc(100dvh-6.5rem)] items-center gap-8 py-12 lg:grid-cols-[1.1fr_1fr]">
+        <div className="container-lst grid min-h-[calc(100dvh-6.5rem)] items-center gap-8 py-12 lg:grid-cols-[1.1fr_1fr]">
           <div>
-            <Wordmark className="h-14 w-auto sm:h-20" label="LSW" />
+            <Wordmark className="h-14 w-auto sm:h-20" label="LST" />
             <h1 className="display mt-8 text-[clamp(2.4rem,7vw,5.5rem)]" id="hero-title">
               More than clothing.<br />It&apos;s a reminder.
             </h1>
@@ -40,7 +40,7 @@ export default async function Home() {
       </section>
 
       {/* FEATURED DROP */}
-      <section aria-labelledby="featured-title" className="container-lsw py-20 sm:py-28">
+      <section aria-labelledby="featured-title" className="container-lst py-20 sm:py-28">
         <div className="flex items-end justify-between gap-6">
           <div>
             <p className="eyebrow">Featured</p>
@@ -57,12 +57,12 @@ export default async function Home() {
 
       {/* BRAND STATEMENT */}
       <section className="border-y border-line bg-coal">
-        <div className="container-lsw grid gap-10 py-20 sm:py-28 lg:grid-cols-[1fr_2fr]">
-          <p className="eyebrow">What LSW stands for</p>
+        <div className="container-lst grid gap-10 py-20 sm:py-28 lg:grid-cols-[1fr_2fr]">
+          <p className="eyebrow">What LST stands for</p>
           <div>
             <p className="display text-3xl sm:text-5xl lg:text-6xl">Built around faith, discipline, and purpose.</p>
             <p className="mt-8 max-w-2xl text-lg leading-relaxed text-silver">
-              Every LSW piece is designed to be more than clothing — a reminder of who you are, what you stand for, and what you&apos;re working toward. Released in limited drops.
+              Every LST piece is designed to be more than clothing — a reminder of who you are, what you stand for, and what you&apos;re working toward. Planned as limited drops.
             </p>
             <Link className="eyebrow mt-8 inline-block underline underline-offset-4 hover:text-bone" href="/our-story">Read our story</Link>
           </div>
@@ -70,7 +70,7 @@ export default async function Home() {
       </section>
 
       {/* DETAIL CAMPAIGN */}
-      <section aria-labelledby="detail-title" className="container-lsw py-20 sm:py-28">
+      <section aria-labelledby="detail-title" className="container-lst py-20 sm:py-28">
         <p className="eyebrow">In the details</p>
         <h2 className="display mt-3 text-4xl sm:text-6xl" id="detail-title">Designed up close</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -93,13 +93,13 @@ export default async function Home() {
 
       {/* EMAIL */}
       <section className="border-t border-line bg-coal" id="early-access">
-        <div className="container-lsw grid gap-10 py-20 sm:py-28 lg:grid-cols-2">
+        <div className="container-lst grid gap-10 py-20 sm:py-28 lg:grid-cols-2">
           <div>
             <p className="eyebrow">Early access</p>
             <h2 className="display mt-3 text-4xl sm:text-6xl">Be first to know.</h2>
           </div>
           <div>
-            <p className="max-w-md text-silver">Join the list and you&apos;ll get first notice when DROP 001 opens, product reveals as they&apos;re finished, and news of any early-access window once one is set. No spam — unsubscribe any time.</p>
+            <p className="max-w-md text-silver">Join the list and you&apos;ll get first notice when DROP 001 opens, product reveals as they&apos;re finished, and news of any early-access window once one is set. No spam.</p>
             <div className="mt-6 max-w-md"><NewsletterForm /></div>
           </div>
         </div>

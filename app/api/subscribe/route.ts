@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/commerce/client-ip";
+import { getStore } from "@/lib/commerce/redis";
 
 export const runtime = "nodejs";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -14,6 +16,14 @@ export async function POST(req: Request) {
   if (body?.company) return NextResponse.json({ ok: true }); // honeypot: silently drop bots
   if (!EMAIL.test(email) || email.length > 254) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+  }
+  // Stops a script from flooding the list (and burning email-provider quota): 5 sign-ups per IP per 10 minutes.
+  try {
+    const store = getStore();
+    if (store && !(await store.allow(`subscribe:${clientIp(req.headers)}`, 5, 600)))
+      return NextResponse.json({ error: "Too many attempts. Please try again in a few minutes." }, { status: 429 });
+  } catch (e) {
+    console.error("subscribe: rate limiter unavailable", e instanceof Error ? e.message : e); // fail open: sign-ups matter more than the limiter
   }
   const key = process.env.RESEND_API_KEY;
   const audience = process.env.RESEND_AUDIENCE_ID;

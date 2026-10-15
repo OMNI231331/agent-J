@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Stripe → LSW. The raw body is verified against STRIPE_WEBHOOK_SECRET before anything is parsed.
+ * Stripe → LST. The raw body is verified against STRIPE_WEBHOOK_SECRET before anything is parsed.
  * 400 = bad signature (Stripe won't retry usefully); 500 = our infrastructure failed (Stripe retries).
  * Stripe must be configured too: an oversold late payment is refunded through it.
  */

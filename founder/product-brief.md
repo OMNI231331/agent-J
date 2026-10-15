@@ -1,6 +1,6 @@
-<!-- /founder:product-brief · 2026-10-08 · input: LSW, premium limited-edition faith-centered streetwear, first collection DROP 001 (from founder/facts.md) -->
+<!-- /founder:product-brief · 2026-10-08 · input: LST, premium limited-edition faith-centered streetwear, first collection DROP 001 (from founder/facts.md) -->
 
-# LSW product brief: DROP 001
+# LST product brief: DROP 001
 
 ## Assumptions
 
@@ -28,7 +28,7 @@ Primary audience, in one sentence: Christian and faith-open buyers in their late
 
 ## 3. Value proposition
 
-LSW helps young, fashion-aware buyers wear their faith, discipline and purpose by making dark, oversized, heavyweight limited-edition streetwear with original cross and star motifs, unlike faith apparel brands that lead with slogans and mainstream streetwear brands that carry no meaning.
+LST helps young, fashion-aware buyers wear their faith, discipline and purpose by making dark, oversized, heavyweight limited-edition streetwear with original cross and star motifs, unlike faith apparel brands that lead with slogans and mainstream streetwear brands that carry no meaning.
 
 ## 4. Core features (MVP)
 
@@ -75,7 +75,7 @@ Each test costs under $500 and runs in under 2 weeks.
    - Pass: a landed unit cost the founder can price a premium product against. No supplier prices exist yet, so none are stated here.
    - Fail: no sample matches the heavyweight, oversized spec within budget.
 
-Also unchecked, and a launch blocker: the LSW trademark and commercial availability. Run this check before any money goes into labels or packaging.
+Also unchecked, and a launch blocker: the LST trademark and commercial availability. Run this check before any money goes into labels or packaging.
 
 ## 7. Go-to-market snapshot
 
@@ -88,11 +88,11 @@ CAC figures below are estimates built from stated assumptions, not sourced bench
 3. **Micro-creators and church or youth-group networks (gifted product for posts).**
    - Estimate: $15 to $35 per order. Arithmetic: product cost of 5 gifted hoodies (unit cost not yet known) divided by an assumed 5 to 10 resulting orders.
 
-**Growth tactic specific to LSW:** numbered limited editions. Each garment carries a number (for example 014 of 100) on the woven label and the buyer can claim it publicly. This turns each buyer's post into proof of scarcity, and the number is a reason to share and to come back for DROP 002. It costs one label print line, not a campaign.
+**Growth tactic specific to LST:** numbered limited editions. Each garment carries a number (for example 014 of 100) on the woven label and the buyer can claim it publicly. This turns each buyer's post into proof of scarcity, and the number is a reason to share and to come back for DROP 002. It costs one label print line, not a campaign.
 
 ## Open items for the founder
 
 - Confirm the budget ceiling and the run size in the first two assumptions.
 - Confirm the target age band.
-- Run the trademark and domain check on LSW.
+- Run the trademark and domain check on LST.
 - Get 3 supplier quotes so unit cost, price and margin can be set.

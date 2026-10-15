@@ -1,6 +1,6 @@
-<!-- /founder:metrics-dashboard · 2026-10-08 · input: 5 metrics for LSW pre-launch limited-drop apparel, matched to Upstash Redis inventory, Stripe checkout and the early-access webhook -->
+<!-- /founder:metrics-dashboard · 2026-10-08 · input: 5 metrics for LST pre-launch limited-drop apparel, matched to Upstash Redis inventory, Stripe checkout and the early-access webhook -->
 
-# LSW metrics dashboard: DROP 001
+# LST metrics dashboard: DROP 001
 
 ## Assumptions
 
@@ -73,7 +73,7 @@ Stage: pre-launch, validation. Focus on whether strangers join and pay, not on t
 | Payments, fees, refunds | Stripe Dashboard | Per transaction ([pricing](https://stripe.com/pricing)) | Already needed |
 | Dashboard | One Google Sheet, one row per week | Free | 20 minutes |
 
-Gaps in the repo today: no page analytics are installed. The Stripe webhook route (`/api/stripe/webhook`) now exists and writes each paid order to Redis, so orders and remaining stock can be read with `pnpm inventory orders` and `pnpm inventory show`, and checked against Stripe with `pnpm inventory reconcile` (see `docs/CHECKOUT.md`). Nothing has been tested against live Stripe or Upstash yet. Sign-up source is always `lsw-early-access`, so outside-versus-circle needs a manual tag or a UTM-based form field.
+Gaps in the repo today: no page analytics are installed. The Stripe webhook route (`/api/stripe/webhook`) now exists and writes each paid order to Redis, so orders and remaining stock can be read with `pnpm inventory orders` and `pnpm inventory show`, and checked against Stripe with `pnpm inventory reconcile` (see `docs/CHECKOUT.md`). Nothing has been tested against live Stripe or Upstash yet. Sign-up source is always `lst-early-access`, so outside-versus-circle needs a manual tag or a UTM-based form field.
 
 ### Events to track
 

@@ -15,12 +15,15 @@ export function ProductCard({ product, stock }: { product: Product; stock: Stock
             <span className="eyebrow absolute left-3 top-3 border border-line bg-ink/80 px-2 py-1 !text-bone">{availabilityLabel[status]}</span>
           )}
         </div>
-        <div className="mt-4 flex items-start justify-between gap-4">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div>
             <h3 className="text-sm font-medium uppercase tracking-wide">{product.name}</h3>
             <p className="mt-1 text-xs text-steel">{product.tagline}</p>
           </div>
-          <p className="font-mono text-sm">{money(product.priceCents)}</p>
+          <div className="flex shrink-0 items-baseline gap-2 sm:block sm:text-right">
+            <p className="font-mono text-sm">{money(product.priceCents)}</p>
+            {product.pricing === "draft" && <p className="eyebrow !text-[9px]">Draft price</p>}
+          </div>
         </div>
       </Link>
       <ul aria-label="Colors" className="mt-3 flex items-center gap-2">

@@ -1,6 +1,6 @@
-<!-- /founder:landing-page · 2026-10-08 · input: Early-access / Drop 001 landing page copy for LSW, section by section, brand voice from facts.md, with FAQ and SEO metadata -->
+<!-- /founder:landing-page · 2026-10-08 · input: Early-access / Drop 001 landing page copy for LST, section by section, brand voice from facts.md, with FAQ and SEO metadata -->
 
-# LSW landing page copy: Drop 001 early access
+# LST landing page copy: Drop 001 early access
 
 ## Assumptions
 
@@ -25,7 +25,7 @@
 
 Small line under the proof: Faith / Discipline / Purpose
 
-Note for the build: the current hero line "More than clothing. It's a reminder." stays as the brand tagline in the wordmark area. Move it out of the H1 so the headline tells a stranger what LSW sells.
+Note for the build: the current hero line "More than clothing. It's a reminder." stays as the brand tagline in the wordmark area. Move it out of the H1 so the headline tells a stranger what LST sells.
 
 ---
 
@@ -68,7 +68,7 @@ Each style is made once, in a run of [quantity]. Each piece carries its own numb
 Recommended type for this stage: pre-launch proof. That means the waitlist count, the founder's story, and sample photos. Do not show quotes, press logos or customer counts until they exist.
 
 - **Waitlist count:** [Waitlist count], shown only once it is real.
-- **Founder note:** [2 to 3 sentences from the founder on why LSW exists and what Faith / Discipline / Purpose means to them, in their own words].
+- **Founder note:** [2 to 3 sentences from the founder on why LST exists and what Faith / Discipline / Purpose means to them, in their own words].
 - **Quote slot 1:** [Quote from a sample tester about the hoodie weight and fit, and what they usually wear instead].
 - **Quote slot 2:** [Quote from an early-access member about why they signed up and what they were missing in other brands].
 
@@ -97,8 +97,8 @@ Assumption: show prices only after the CFO step confirms them against supplier q
 **When does Drop 001 open, and how many pieces are there?**
 Early-access members get the link first on [opening date]. Each style is capped at [quantity]. When a style sells out, it is gone.
 
-**Is LSW only for religious people?**
-No. The faith behind LSW is real, and it shows in the details, not in slogans. If you buy it for the look, you get the look. If it means more to you, it does.
+**Is LST only for religious people?**
+No. The faith behind LST is real, and it shows in the details, not in slogans. If you buy it for the look, you get the look. If it means more to you, it does.
 
 **What are the pieces made of, and how do they fit?**
 They are heavyweight and oversized. The fabric is [fabric and weight], and every page lists measurements in inches so you can compare with a piece you own. Details are confirmed after the final sample.
@@ -123,7 +123,7 @@ We use it to tell you about Drop 001 and later drops, and for nothing else. We d
 
 ## 9. SEO metadata
 
-**Title tag (56 characters):** LSW Drop 001: Heavyweight Faith-Centered Streetwear
+**Title tag (56 characters):** LST Drop 001: Heavyweight Faith-Centered Streetwear
 
 **Meta description (157 characters):** Dark, oversized streetwear with original cross and star details, made in numbered runs. Join early access to get the Drop 001 link before it opens.
 

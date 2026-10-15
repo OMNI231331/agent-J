@@ -1,11 +1,11 @@
-<!-- /founder:user-interviews · 2026-10-08 · input: Mom Test interview script for LSW faith-centered premium streetwear buyers, adapted to apparel and a founder with no audience yet -->
+<!-- /founder:user-interviews · 2026-10-08 · input: Mom Test interview script for LST faith-centered premium streetwear buyers, adapted to apparel and a founder with no audience yet -->
 
-# LSW buyer interviews: 25-minute Mom Test script
+# LST buyer interviews: 25-minute Mom Test script
 
 ## Assumptions
 
 - Assumption: the founder is solo, has no email list or following, and has never run an interview (facts.md, product-brief.md).
-- Assumption: buyer age band is 18 to 28 and the price band to probe is $150 to $225 (persona-gen.md). Never state an LSW price in an interview.
+- Assumption: buyer age band is 18 to 28 and the price band to probe is $150 to $225 (persona-gen.md). Never state an LST price in an interview.
 - No new outside facts are used. Incentive amounts are proposals.
 
 ## 1. Objectives: the 3 assumptions to test
@@ -72,7 +72,7 @@ Past behavior only. Do not mention faith until question 6.
 
 ### Solution exploration (5 min)
 
-Still no mention of LSW.
+Still no mention of LST.
 
 1. "If you could design your ideal hoodie from scratch, what would be on it and what would it feel like?" Listen for unprompted faith, crystals, fit, weight.
 2. "What is the first thing you look at in photos to decide if a hoodie is worth it?"

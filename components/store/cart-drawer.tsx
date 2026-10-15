@@ -6,7 +6,7 @@ import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { useModal } from "@/lib/use-modal";
 import { COLORS, money } from "@/lib/catalog";
-import { findSku, MAX_PER_LINE } from "@/lib/catalog";
+import { findSku, MAX_PER_LINE, MAX_UNITS_PER_ORDER } from "@/lib/catalog";
 import { ProductArt } from "./product-art";
 
 export function CartDrawer() {
@@ -40,8 +40,8 @@ export function CartDrawer() {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div aria-hidden className="absolute inset-0 animate-[lsw-fade_220ms_ease-out] bg-black/70" onClick={() => setOpen(false)} />
-      <aside aria-label="Shopping bag" aria-modal="true" className="relative flex h-dvh w-full max-w-md animate-[lsw-slide-in_340ms_cubic-bezier(0.22,1,0.36,1)] flex-col border-l border-line bg-coal outline-none" ref={panelRef} role="dialog" tabIndex={-1}>
+      <div aria-hidden className="absolute inset-0 animate-[lst-fade_220ms_ease-out] bg-black/70" onClick={() => setOpen(false)} />
+      <aside aria-label="Shopping bag" aria-modal="true" className="relative flex h-dvh w-full max-w-md animate-[lst-slide-in_340ms_cubic-bezier(0.22,1,0.36,1)] flex-col border-l border-line bg-coal outline-none" ref={panelRef} role="dialog" tabIndex={-1}>
         <div className="flex h-16 items-center justify-between border-b border-line px-5">
           <h2 className="eyebrow !text-bone">Bag ({count})</h2>
           <button aria-label="Close bag" className="-mr-2 grid h-11 w-11 place-items-center" onClick={() => setOpen(false)} type="button">
@@ -80,7 +80,7 @@ export function CartDrawer() {
                         <div className="flex items-center border border-line">
                           <button aria-label={`Decrease quantity of ${product.name}`} className="grid h-9 w-9 place-items-center" onClick={() => setQty(l.sku, l.qty - 1)} type="button"><Minus size={14} /></button>
                           <span aria-live="polite" className="w-8 text-center font-mono text-sm">{l.qty}</span>
-                          <button aria-label={`Increase quantity of ${product.name}`} className="grid h-9 w-9 place-items-center disabled:opacity-30" disabled={l.qty >= max} onClick={() => setQty(l.sku, l.qty + 1)} type="button"><Plus size={14} /></button>
+                          <button aria-label={`Increase quantity of ${product.name}`} className="grid h-9 w-9 place-items-center disabled:opacity-30" disabled={l.qty >= max || count >= MAX_UNITS_PER_ORDER} onClick={() => setQty(l.sku, l.qty + 1)} type="button"><Plus size={14} /></button>
                         </div>
                         <button className="eyebrow underline underline-offset-4 hover:text-bone" onClick={() => remove(l.sku)} type="button">Remove</button>
                       </div>
@@ -94,7 +94,7 @@ export function CartDrawer() {
                 <span className="eyebrow !text-bone">Subtotal</span>
                 <span className="font-mono">{money(subtotalCents)}</span>
               </div>
-              <p className="mt-2 text-xs text-steel">Shipping and taxes are calculated at checkout. Limit {MAX_PER_LINE} per item.</p>
+              <p className="mt-2 text-xs text-steel">Shipping and taxes are calculated at checkout. Limit {MAX_PER_LINE} per item, {MAX_UNITS_PER_ORDER} items per order.</p>
               {error && <p className="mt-3 text-sm text-alert" role="alert">{error}</p>}
               <button className="btn mt-4 w-full" disabled={busy} onClick={checkout} type="button">
                 {busy ? "Starting checkout…" : "Checkout"}

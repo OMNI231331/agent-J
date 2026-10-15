@@ -5,7 +5,7 @@ import { NewsletterForm } from "./newsletter-form";
 
 const cols = [
   { title: "Shop", links: [["All products", "/shop"], ["Drop 001", "/drop-001"], ["Hoodies", "/shop?category=Hoodies"], ["Tees", "/shop?category=Tees"]] },
-  { title: "LSW", links: [["Our story", "/our-story"], ["Contact", "/contact"]] },
+  { title: "LST", links: [["Our story", "/our-story"], ["Contact", "/contact"]] },
   { title: "Help", links: [["Shipping & returns", "/shipping-returns"], ["Privacy policy", "/privacy"], ["Terms", "/terms"]] },
 ] as const;
 
@@ -13,7 +13,7 @@ export function Footer() {
   const socials = Object.entries(site.social).filter(([, url]) => url) as [string, string][];
   return (
     <footer className="border-t border-line bg-coal">
-      <div className="container-lsw grid gap-12 py-16 lg:grid-cols-[1.2fr_2fr]">
+      <div className="container-lst grid gap-12 py-16 lg:grid-cols-[1.2fr_2fr]">
         <div>
           <Wordmark className="h-8 w-auto" />
           <p className="eyebrow mt-4">Faith / Discipline / Purpose</p>
@@ -30,7 +30,7 @@ export function Footer() {
                 {c.links.map(([label, href]) => (
                   <li key={label}><Link className="hover:text-bone" href={href}>{label}</Link></li>
                 ))}
-                {c.title === "LSW" && socials.map(([name, url]) => (
+                {c.title === "LST" && socials.map(([name, url]) => (
                   <li key={name}><a className="capitalize hover:text-bone" href={url} rel="noopener noreferrer" target="_blank">{name}</a></li>
                 ))}
               </ul>
@@ -39,8 +39,8 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-line">
-        <div className="container-lsw flex flex-col gap-3 py-6 text-xs text-steel sm:flex-row sm:items-center sm:justify-between">
-          <span className="flex items-center gap-3"><Monogram className="h-5 w-5" mono /> © {new Date().getFullYear()} LSW. All rights reserved.</span>
+        <div className="container-lst flex flex-col gap-3 py-6 text-xs text-steel sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-center gap-3"><Monogram className="h-5 w-5" mono /> © {new Date().getFullYear()} LST. All rights reserved.</span>
           <span>Product images are concept renders until photography is published.</span>
         </div>
       </div>

@@ -7,7 +7,7 @@ export type HandleResult = { handled: boolean; duplicate?: boolean; outcome?: st
 
 /** One JSON object per line, so Vercel's log search can filter it. Callers must never put customer data in an entry. */
 export type Log = (entry: Record<string, unknown>) => void;
-export const jsonLog: Log = (entry) => console.log(JSON.stringify({ app: "lsw", at: new Date().toISOString(), ...entry }));
+export const jsonLog: Log = (entry) => console.log(JSON.stringify({ app: "lst", at: new Date().toISOString(), ...entry }));
 
 export type WebhookDeps = { refunds?: Pick<StripeApi, "createRefund">; now?: () => number; log?: Log };
 

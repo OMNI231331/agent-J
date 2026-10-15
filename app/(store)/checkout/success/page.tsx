@@ -22,7 +22,7 @@ export default async function SuccessPage({ searchParams }: { searchParams: Prom
   const order = session_id && /^cs_[A-Za-z0-9_]+$/.test(session_id) && store ? await store.getOrder(session_id).catch(() => null) : null;
   const c = COPY[order?.status ?? "pending"];
   return (
-    <div className="container-lsw py-24 text-center">
+    <div className="container-lst py-24 text-center">
       {order?.status !== "payment_failed" && <ClearCart />}
       <p className="eyebrow">{c.eyebrow}</p>
       <h1 className="display mt-4 text-5xl sm:text-7xl">{c.title}</h1>

@@ -9,14 +9,14 @@ const palette = [
   ["Line", "#2A2B2F", "Hairline borders"], ["Steel", "#92959B", "Secondary text"], ["Silver", "#C9CCD1", "Metallic accent"], ["Bone", "#ECE9E2", "Primary text, off-white"],
 ];
 const files = [
-  ["Primary wordmark (chrome)", "lsw-wordmark.svg"], ["Monochrome wordmark", "lsw-wordmark-mono.svg"], ["Symbol / monogram", "lsw-monogram.svg"],
-  ["Lockup (symbol + wordmark)", "lsw-lockup.svg"], ["Small label version", "lsw-label-small.svg"], ["Back statement graphic", "lsw-back-statement.svg"],
-  ["Embroidery", "lsw-embroidery.svg"], ["Screen print (1 colour)", "lsw-screenprint.svg"], ["Rhinestone layout", "lsw-rhinestone.svg"], ["Symbol rhinestone layout", "lsw-monogram-rhinestone.svg"],
+  ["Primary wordmark (chrome)", "lst-wordmark.svg"], ["Monochrome wordmark", "lst-wordmark-mono.svg"], ["Symbol / monogram", "lst-monogram.svg"],
+  ["Lockup (symbol + wordmark)", "lst-lockup.svg"], ["Small label version", "lst-label-small.svg"], ["Back statement graphic", "lst-back-statement.svg"],
+  ["Embroidery", "lst-embroidery.svg"], ["Screen print (1 colour)", "lst-screenprint.svg"], ["Rhinestone layout", "lst-rhinestone.svg"], ["Symbol rhinestone layout", "lst-monogram-rhinestone.svg"],
 ];
 
 export default function BrandPage() {
   return (
-    <div className="container-lsw py-16 sm:py-24">
+    <div className="container-lst py-16 sm:py-24">
       <p className="eyebrow">Internal reference</p>
       <h1 className="display mt-3 text-5xl sm:text-7xl">Brand system</h1>
 

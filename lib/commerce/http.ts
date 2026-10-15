@@ -1,7 +1,9 @@
 import { startCheckout } from "./checkout.ts";
+import { clientIp } from "./client-ip.ts";
 import type { CommerceConfig } from "./config.ts";
 import type { InventoryStore } from "./store.ts";
 import { verifyStripeSignature, type StripeApi } from "./stripe.ts";
+import { validateCart } from "./validate.ts";
 import { handleStripeEvent, jsonLog, type Log, type StripeEvent } from "./webhook.ts";
 
 /** Route logic as plain functions (Request in, Response out) so it can be tested without a Next.js server. */
@@ -40,11 +42,14 @@ export async function handleCheckoutRequest(req: Request, d: CheckoutRequestDeps
     return json({ error: "Checkout isn't open yet." }, 503);
   }
   try {
-    // Stops scripts from reserving (hoarding) a limited drop: max 8 checkout starts per IP per 10 minutes.
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
-    if (!(await d.cfg.store.allow(`checkout:${ip}`, 8, 600))) return json({ error: "Too many checkout attempts. Please wait a few minutes and try again." }, 429);
     const body = (await req.json().catch(() => null)) as { lines?: unknown } | null;
     if (!body) return json({ error: "Invalid request." }, 400);
+    // Malformed or impossible carts are rejected for free; only real checkout attempts count toward the limit.
+    const checked = validateCart(body.lines, { liveMode: d.liveMode });
+    if (!checked.ok) return json({ error: checked.error }, checked.status);
+    // Stops scripts from reserving (hoarding) a limited drop: max 8 checkout starts per IP per 10 minutes.
+    // clientIp prefers the platform-set header, so a spoofed x-forwarded-for can't dodge the limit.
+    if (!(await d.cfg.store.allow(`checkout:${clientIp(req.headers)}`, 8, 600))) return json({ error: "Too many checkout attempts. Please wait a few minutes and try again." }, 429);
     const result = await startCheckout(body.lines, {
       store: d.cfg.store,
       stripe: d.cfg.stripe,

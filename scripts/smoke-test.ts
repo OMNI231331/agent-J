@@ -12,7 +12,7 @@ import { InventoryStore } from "../lib/commerce/store.ts";
 import { signStripePayload } from "../lib/commerce/stripe.ts";
 
 const WHSEC = "whsec_smoke", CRON = "cron_smoke", TOKEN = "tok_smoke", APP_PORT = 3000; // 3000 = host allowed by the existing eve auth config
-const SKU = "LSW001-HOOD-WASHED-BLACK-M";
+const SKU = "LST001-HOOD-WASHED-BLACK-M";
 
 // ---- fake Stripe
 const sessions = new Map<string, { id: string; status: string; params: URLSearchParams; object?: Record<string, unknown> }>();
@@ -121,7 +121,7 @@ try {
     assert.equal(r.status, 200);
     assert.equal(((await r.json()) as { duplicate?: boolean }).duplicate, true);
     assert.equal(await stock(), 1);
-    assert.equal(Number(await admin.command("ZCARD", "lsw:orders")), 1);
+    assert.equal(Number(await admin.command("ZCARD", "lst:orders")), 1);
   });
   await step("the order records the shipping address, payment id, items and an unfulfilled status", async () => {
     const o = (await store.getOrder(sessionId))!;
@@ -157,7 +157,7 @@ try {
     assert.equal(again.status, 0);
     assert.match(again.stdout, /missing in Redis: 0/);
     assert.equal(await stock(), 3);
-    assert.equal(Number(await admin.command("ZCARD", "lsw:orders")), 2);
+    assert.equal(Number(await admin.command("ZCARD", "lst:orders")), 2);
     await store.setStock({ [SKU]: 1 });
   });
   await step("CLI: 'fulfill' marks a paid order shipped, and refuses an unpaid one", async () => {
@@ -189,11 +189,42 @@ try {
     assert.ok(html.includes("line-through"), "sold-out size should be struck through");
     await store.setStock({ [SKU]: 1 });
   });
-  await step("checkout starts are rate-limited per IP", async () => {
+  await step("checkout starts are rate-limited per IP (invalid carts don't count)", async () => {
+    for (let i = 0; i < 12; i++) assert.equal((await post("/api/checkout", { lines: [] }, { "x-forwarded-for": "203.0.113.9" })).status, 400, "malformed carts must never use up the limit");
     let last = 0;
-    for (let i = 0; i < 12; i++) last = (await post("/api/checkout", { lines: [] }, { "x-forwarded-for": "203.0.113.9" })).status;
+    for (let i = 0; i < 12; i++) last = (await post("/api/checkout", { lines: [{ sku: SKU, qty: 1 }] }, { "x-forwarded-for": "203.0.113.9" })).status;
     assert.equal(last, 429);
-    assert.equal((await post("/api/checkout", { lines: [] }, { "x-forwarded-for": "203.0.113.10" })).status, 400, "other IPs are unaffected");
+    assert.equal((await post("/api/checkout", { lines: [{ sku: SKU, qty: 1 }] }, { "x-forwarded-for": "203.0.113.10" })).status !== 429, true, "other IPs are unaffected");
+    await store.setStock({ [SKU]: 1 }); // earlier attempts may have reserved stock; reset for the next steps
+  });
+  await step("platform-set IP header wins over a spoofed x-forwarded-for", async () => {
+    // 12 requests, each with a different spoofed x-forwarded-for but the same trusted x-vercel-forwarded-for
+    let last = 0;
+    for (let i = 0; i < 12; i++) last = (await post("/api/checkout", { lines: [{ sku: SKU, qty: 1 }] }, { "x-vercel-forwarded-for": "203.0.113.50", "x-forwarded-for": `10.9.8.${i}` })).status;
+    assert.equal(last, 429, "rotating x-forwarded-for must not bypass the limit");
+    await store.setStock({ [SKU]: 1 });
+  });
+  await step("an order over 6 items is rejected", async () => {
+    const r = await post("/api/checkout", { lines: [{ sku: SKU, qty: 3 }, { sku: "LST001-HOOD-WASHED-BLACK-L", qty: 3 }, { sku: "LST001-TEE-WASHED-BLACK-M", qty: 1 }] }, { "x-forwarded-for": "203.0.113.60" });
+    assert.equal(r.status, 409);
+  });
+  await step("branded 404 page, robots.txt, sitemap.xml and security headers", async () => {
+    const nf = await fetch(`${B}/definitely-not-a-page`);
+    assert.equal(nf.status, 404);
+    const html = await nf.text();
+    assert.match(html, /Page not found/); assert.match(html, /Back to the shop/); assert.match(html, /<header/);
+    const robots = await (await fetch(`${B}/robots.txt`)).text();
+    assert.match(robots, /Disallow: \/api\//); assert.match(robots, /Sitemap:/);
+    const map = await (await fetch(`${B}/sitemap.xml`)).text();
+    assert.match(map, /\/products\/signature-hoodie/); assert.doesNotMatch(map, /\/brand|\/api\//);
+    const h = (await fetch(`${B}/shop`)).headers;
+    assert.equal(h.get("x-content-type-options"), "nosniff"); assert.equal(h.get("x-frame-options"), "SAMEORIGIN"); assert.equal(h.get("x-powered-by"), null);
+  });
+  await step("draft price is labelled on listing pages; canonical and noindex are set", async () => {
+    const shop = await (await fetch(`${B}/shop?category=Hoodies&sort=price-desc`)).text();
+    assert.match(shop, /Draft price/);
+    assert.match(shop, /rel="canonical" href="[^"]*\/shop"/, "filtered/sorted shop URLs must canonicalise to /shop");
+    assert.match(await (await fetch(`${B}/assistant`)).text(), /noindex/);
   });
   await step("late payment after sell-out: first refund attempt fails, Stripe's retry refunds the customer exactly once", async () => {
     await store.setStock({ [SKU]: 1 });

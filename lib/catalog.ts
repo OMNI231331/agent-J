@@ -1,5 +1,5 @@
 /**
- * LSW product catalog — typed source of truth for the storefront.
+ * LST product catalog — typed source of truth for the storefront.
  *
  * STATUS: everything marked `draft` is a design target, NOT a verified spec.
  * Prices are placeholders until supplier quotes exist; stock is demo data until
@@ -93,16 +93,16 @@ export const products: Product[] = [
       composition: null,
     },
     details: [
-      "Small LSW wordmark, front chest — embroidered (target ~7 cm wide)",
+      "Small LST wordmark, front chest — embroidered (target ~7 cm wide)",
       "Back: large cross graphic, crystal-outlined (target ~28 × 34 cm)",
-      "Left sleeve: LSW monogram, crystal (target ~6 cm)",
+      "Left sleeve: LST monogram, crystal (target ~6 cm)",
       "Interior woven neck label, limited-edition label (DROP 001)",
       "Ribbed cuffs and hem, double-layer hood",
     ],
     care: CARE_DRAFT,
     sizes: SIZES_APPAREL,
     colors: ["washed-black", "charcoal"],
-    variants: variants("LSW001-HOOD", ["washed-black", "charcoal"], SIZES_APPAREL, { "charcoal/XXL": 0 }),
+    variants: variants("LST001-HOOD", ["washed-black", "charcoal"], SIZES_APPAREL, { "charcoal/XXL": 0 }),
     sizeGuide: guide("Measurements will be published from the approved production sample. Not yet verified."),
   },
   {
@@ -116,14 +116,14 @@ export const products: Product[] = [
     purchasable: true,
     level: 1,
     description:
-      "A relaxed, boxy heavyweight tee with a restrained front mark and a vintage-treated back print. No crystals on this one — the lowest-risk, lowest-price way into LSW.",
+      "A relaxed, boxy tee with a restrained front mark and a vintage-treated back print. No crystals on this one — the lowest-risk, lowest-price way into LST.",
     fit: "Oversized and boxy with a dropped shoulder. True size for the designed fit.",
     fabric: {
       summary: "Heavyweight cotton jersey, target 220–260 GSM (design target — unconfirmed).",
       composition: null,
     },
     details: [
-      "Front left chest: small LSW mark — screen print or embroidery (to be confirmed at sampling)",
+      "Front left chest: small LST mark — screen print or embroidery (to be confirmed at sampling)",
       "Back: cross + FAITH / DISCIPLINE / PURPOSE, vintage-distressed print (target ~30 cm wide)",
       "Garment-washed finish for a lived-in look",
       "Interior printed or woven neck label",
@@ -131,7 +131,7 @@ export const products: Product[] = [
     care: CARE_DRAFT,
     sizes: SIZES_APPAREL,
     colors: ["washed-black", "washed-gray"],
-    variants: variants("LSW001-TEE", ["washed-black", "washed-gray"], SIZES_APPAREL),
+    variants: variants("LST001-TEE", ["washed-black", "washed-gray"], SIZES_APPAREL),
     sizeGuide: guide("Measurements will be published from the approved production sample. Not yet verified."),
   },
   {
@@ -145,14 +145,14 @@ export const products: Product[] = [
     purchasable: true,
     level: 1,
     description:
-      "A cuffed knit beanie with the LSW wordmark embroidered on the cuff. One size, low production risk, and the easiest first LSW piece to put on someone's head.",
+      "A cuffed knit beanie with the LST wordmark embroidered on the cuff. One size, low production risk, and the easiest first LST piece to put on someone's head.",
     fit: "One size, cuffed. Stretch knit.",
     fabric: { summary: "Acrylic or cotton-blend rib knit — material to be selected at sampling (unconfirmed).", composition: null },
     details: ["Wordmark embroidered on cuff (target ~6 cm wide)", "Cuffed rib knit", "One size"],
     care: CARE_DRAFT,
     sizes: ["One size"],
     colors: ["black", "charcoal"],
-    variants: variants("LSW001-BEAN", ["black", "charcoal"], ["One size"]),
+    variants: variants("LST001-BEAN", ["black", "charcoal"], ["One size"]),
     sizeGuide: { note: "One size. Circumference and stretch to be confirmed from the sample.", rows: [{ size: "One size" }] },
   },
   {
@@ -173,7 +173,7 @@ export const products: Product[] = [
     care: CARE_DRAFT,
     sizes: SIZES_APPAREL,
     colors: ["black"],
-    variants: variants("LSW001-STMT", ["black"], SIZES_APPAREL, Object.fromEntries(SIZES_APPAREL.map((s) => [`black/${s}`, null]))),
+    variants: variants("LST001-STMT", ["black"], SIZES_APPAREL, Object.fromEntries(SIZES_APPAREL.map((s) => [`black/${s}`, null]))),
     sizeGuide: guide("Concept only — no measurements yet."),
   },
 ];
@@ -191,3 +191,6 @@ export const allSkus = () => [...bySku.keys()];
 
 /** Max units of one variant per order (limited-drop guard; stock is checked separately). */
 export const MAX_PER_LINE = 3;
+/** Total units in one order, and the most distinct lines a bag may hold. Enforced in the bag AND on the server. */
+export const MAX_UNITS_PER_ORDER = 6;
+export const MAX_CART_LINES = 20;

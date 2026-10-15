@@ -1,13 +1,13 @@
-<!-- /founder:email-sequence · 2026-10-08 · input: LSW early-access email sequence: welcome, behind the scenes, brand meaning, fit and fabric proof, drop announcement with quantity placeholder, last chance only if true, post-purchase shipping and exchange -->
+<!-- /founder:email-sequence · 2026-10-08 · input: LST early-access email sequence: welcome, behind the scenes, brand meaning, fit and fabric proof, drop announcement with quantity placeholder, last chance only if true, post-purchase shipping and exchange -->
 
-# LSW early-access email sequence: DROP 001
+# LST early-access email sequence: DROP 001
 
 ## Assumptions
 
 - Assumption: the trigger is a sign-up on the drop page. The site's sign-up is not connected to a real service yet (facts.md), so no list exists today.
 - Assumption: the drop date, units per style, prices, fabric weight and measurements are not set. Every one is a [bracketed placeholder] below. Prices in product-brief and pricing-strategy are drafts, so none appear in the copy.
 - Assumption: US-only shipping, exchanges only, no cash refunds (pricing-strategy.md, mvp-scope.md). Edit email 7 if the policy page says otherwise.
-- Assumption: the founder writes and signs as one person. From name: "[Founder first name] from LSW".
+- Assumption: the founder writes and signs as one person. From name: "[Founder first name] from LST".
 - Nothing here is sent. Sending is not set up.
 
 ## 1. Sequence strategy
@@ -22,13 +22,13 @@
 
 ### Email 1: Welcome
 - **Send timing:** immediately after sign-up.
-- **Subject:** A) You're on the LSW list. B) Welcome to LSW. Here's what's coming.
+- **Subject:** A) You're on the LST list. B) Welcome to LST. Here's what's coming.
 - **Preview text:** One drop, [N] pieces per style, no restocks.
 - **Body:**
 
-Hey, it's [Founder first name]. Thanks for joining the LSW early-access list.
+Hey, it's [Founder first name]. Thanks for joining the LST early-access list.
 
-LSW makes dark, oversized, heavyweight streetwear built around three words: Faith, Discipline, Purpose. DROP 001 is our first collection, and it is limited.
+LST makes dark, oversized, heavyweight streetwear built around three words: Faith, Discipline, Purpose. DROP 001 is our first collection, and it is limited.
 
 Here is what you get as a subscriber: the drop date before it is public, and a link that opens at [time and timezone] on [drop date]. In the next two weeks I will show you the samples, the meaning behind the marks, and the fit details, so you can decide before anything opens.
 
@@ -58,13 +58,13 @@ P.S. Reply with the detail you want to see up close.
 
 ### Email 3: The meaning behind the brand
 - **Send timing:** day 4.
-- **Subject:** A) Why a cross and a star. B) What LSW stands for.
+- **Subject:** A) Why a cross and a star. B) What LST stands for.
 - **Preview text:** Faith, Discipline, Purpose, in one garment.
 - **Body:**
 
-LSW is built on Faith, Discipline, Purpose. I'll say what each means to me.
+LST is built on Faith, Discipline, Purpose. I'll say what each means to me.
 
-Faith is why the brand exists. [Founder: 1 to 2 sentences, in your own words, on what faith means to you and why you started LSW.]
+Faith is why the brand exists. [Founder: 1 to 2 sentences, in your own words, on what faith means to you and why you started LST.]
 
 Discipline is the standard: heavyweight fabric, careful finishing, a fixed run size, no shortcuts to hit a date.
 
@@ -72,7 +72,7 @@ Purpose is the point of wearing it. [Founder: 1 sentence on what you want a wear
 
 The cross and star motifs are original designs. You don't need to share my faith to wear them, and nothing on the garment preaches. If the meaning speaks to you, it is there.
 
-**Button:** Read the LSW story (about page)
+**Button:** Read the LST story (about page)
 
 ### Email 4: Fit and fabric proof
 - **Send timing:** day 7.
@@ -125,7 +125,7 @@ I'm sending this one email because the numbers are real. If your size isn't on t
 
 ### Email 7: Post-purchase shipping and exchange
 - **Send timing:** on order, then a tracking update when it ships (send two short messages, or one with a tracking placeholder).
-- **Subject:** A) Your LSW order is confirmed. B) Order [#] is in. Here's what's next.
+- **Subject:** A) Your LST order is confirmed. B) Order [#] is in. Here's what's next.
 - **Preview text:** Shipping date and how to exchange.
 - **Body:**
 
@@ -149,7 +149,7 @@ P.S. If you post your fit, tag @[brand handle]. I see every one.
 - **Segmentation:** sign-up source (Instagram, TikTok, church or youth group, friend), sizes asked about, piece asked about (email 1 replies), purchased or not (suppresses emails 5 and 6 for buyers, moves them to email 7).
 - **Unsubscribes and compliance (CAN-SPAM, US):** every email needs a working unsubscribe link, honor opt-outs within 10 business days, an accurate From name and subject, and the sender's valid physical postal address. Rules: [FTC CAN-SPAM guide](https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business). GDPR applies if any subscriber is in the EU; the plan is US-only shipping, so collect consent anyway and do not email EU addresses until reviewed. Transactional email 7 is order-related, but keep the unsubscribe and address in the footer of the marketing emails.
 - **Sending is NOT set up.** The sign-up form posts to an unconfigured webhook. No email service, no unsubscribe link, no sending domain and no physical address are in place. Nothing in this file has been sent.
-- **From name:** "[Founder first name] from LSW". Reason: a small brand with no audience earns more trust from a person than a logo, and replies reach the founder.
+- **From name:** "[Founder first name] from LST". Reason: a small brand with no audience earns more trust from a person than a logo, and replies reach the founder.
 
 ## 4. A/B tests and timing
 
@@ -173,4 +173,4 @@ Apple Mail Privacy Protection (2021) inflates open rates, so clicks are the more
 1. Choose and set up an email service and connect the sign-up form.
 2. Add a working unsubscribe link and a physical postal address to every marketing email.
 3. Fill every [bracketed placeholder]: drop date, units per style, prices, fabric specs, measurements, policy text.
-4. Confirm the LSW trademark check and the exchange policy match the copy.
+4. Confirm the LST trademark check and the exchange policy match the copy.

@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Checkout cancelled", robots: { index
 export default async function CancelledPage({ searchParams }: { searchParams: Promise<{ r?: string }> }) {
   const { r } = await searchParams;
   return (
-    <div className="container-lsw py-24 text-center">
+    <div className="container-lst py-24 text-center">
       {r && <ReleaseReservation reservationId={r} />}
       <p className="eyebrow">Checkout cancelled</p>
       <h1 className="display mt-4 text-5xl sm:text-7xl">No charge made.</h1>

@@ -6,7 +6,7 @@ import { products, type Category } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Shop", description: "Shop LSW DROP 001 — heavyweight hoodies, oversized tees and headwear." };
+export const metadata: Metadata = { title: "Shop", description: "LST DROP 001: hoodies, tees and headwear in development. Prices shown are drafts." };
 
 const categories: ("All" | Category)[] = ["All", "Hoodies", "Tees", "Headwear"];
 const sorts = { featured: "Featured", "price-asc": "Price: low to high", "price-desc": "Price: high to low" } as const;
@@ -22,8 +22,8 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const href = (c: string, s: string) => `/shop?${new URLSearchParams({ ...(c !== "All" && { category: c }), ...(s !== "featured" && { sort: s }) })}`;
 
   return (
-    <div className="container-lsw pt-12 pb-24 sm:pt-16">
-      <p className="eyebrow">LSW — Drop 001</p>
+    <div className="container-lst pt-12 pb-24 sm:pt-16">
+      <p className="eyebrow">LST — Drop 001</p>
       <h1 className="display mt-3 text-5xl sm:text-7xl">Shop</h1>
       <div className="mt-10 flex flex-col gap-5 border-y border-line py-4 sm:flex-row sm:items-center sm:justify-between">
         <nav aria-label="Filter by category" className="flex flex-wrap gap-2">

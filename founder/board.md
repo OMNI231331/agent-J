@@ -1,4 +1,4 @@
-# Board summary: LSW Drop 001
+# Board summary: LST Drop 001
 
 **Vote:** 3 fund if (0 fund, 0 pass). **Average score:** 4.7 / 10 (Offers 4, Monopoly 4, Product 6).
 
@@ -8,12 +8,12 @@
 1. **The target buyer is undefined.** Offers and Monopoly both need a named first market before anything else can be scored.
 2. **Distribution and first customers are unplanned.** Monopoly and Offers both ask how the first 100 buyers arrive and what they cost.
 3. **Nothing has been sampled or tested physically.** Offers (proof) and Product (craft) both point at the same gap: the hoodie has never been made.
-4. **The name may collide.** Monopoly and Offers both need a trademark check on "LSW" before printing.
+4. **The name may collide.** Monopoly and Offers both need a trademark check on "LST" before printing.
 
 ## Conditions (checklist for the rest of the pack)
 - [ ] Name the target buyer in one sentence. (consumer panel tests this)
 - [ ] Map competitors in faith-inspired and oversized streetwear with prices. (/founder-competitors)
-- [ ] Run a trademark and domain check on LSW for apparel before any printing.
+- [ ] Run a trademark and domain check on LST for apparel before any printing.
 - [ ] Produce one physical Signature Hoodie sample; run the wash and stone-pull test before taking pre-orders.
 - [ ] Name the first community to sell to and one real channel to reach it.
 - [ ] Write a guarantee and exchange policy the CFO can cost. (/founder-cfo)

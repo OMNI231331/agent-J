@@ -1,13 +1,13 @@
-<!-- /founder:persona-gen · 2026-10-08 · input: 3 buyer personas for LSW premium limited-edition faith-centered streetwear, DROP 001, adapted from the software template to apparel buying behavior -->
+<!-- /founder:persona-gen · 2026-10-08 · input: 3 buyer personas for LST premium limited-edition faith-centered streetwear, DROP 001, adapted from the software template to apparel buying behavior -->
 
-# LSW buyer personas
+# LST buyer personas
 
 These personas are hypotheses until real buyers confirm them. Names, details and quotes are illustrative, not real people or testimonials.
 
 ## Assumptions
 
 - Assumption: the buyer age band is 18 to 28 (product-brief.md assumption; facts.md says only "younger customers").
-- Assumption: DROP 001 hoodie price lands in the $150 to $225 band shown in competitor-matrix.md. No LSW price is set.
+- Assumption: DROP 001 hoodie price lands in the $150 to $225 band shown in competitor-matrix.md. No LST price is set.
 - Assumption: the founder sells only online, with no stockists.
 - Assumption: incomes, weekly spend and hours below are estimates for sizing, not data.
 

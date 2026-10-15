@@ -28,9 +28,11 @@ const display = Archivo({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: { default: "LSW — Faith / Discipline / Purpose", template: "%s — LSW" },
-  description: "LSW is premium limited-edition streetwear: heavyweight oversized silhouettes, original gothic-inspired graphics and crystal detailing. DROP 001.",
-  openGraph: { siteName: "LSW", type: "website" },
+  title: { default: "LST — Faith / Discipline / Purpose", template: "%s — LST" },
+  description: "LST is a streetwear brand in development: oversized silhouettes, original gothic-inspired graphics and selected crystal detailing. DROP 001 is in sampling.",
+  alternates: { canonical: "./" }, // each page names itself (query strings like ?sort= are not separate pages)
+  openGraph: { siteName: "LST", type: "website" },
+  twitter: { card: "summary" },
 };
 
 // The page and Eve routes validate the generated app's Better Auth session.
