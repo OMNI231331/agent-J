@@ -23,6 +23,7 @@
     "early-access": "node --env-file-if-exists=.env.local scripts/early-access.ts"
   },
   "dependencies": {
+    "@openrouter/ai-sdk-provider": "3.1.0",
     "@radix-ui/react-use-controllable-state": "1.2.2",
     "@shikijs/core": "3.23.0",
     "@shikijs/engine-javascript": "3.23.0",
